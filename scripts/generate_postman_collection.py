@@ -192,7 +192,7 @@ def build_collection() -> Dict:
 
   collection = {
     'info': {
-      'name': 'Evolution API - Collection Completa (PT-BR)',
+      'name': 'Eve Platform - Evolution API - Collection Completa (PT-BR)',
       'description': 'Collection completa gerada automaticamente a partir das rotas do projeto.',
       'schema': 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
     },
