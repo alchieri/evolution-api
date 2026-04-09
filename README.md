@@ -166,3 +166,21 @@ The script performs this flow automatically:
 4. Tags image with ECR URI.
 5. Pushes image to ECR.
 6. Optionally tags/pushes a stable tag (`STABLE_TAG`).
+
+## Deploy to AWS ECS Fargate
+
+A complete CloudFormation template for ECS Fargate deployment is available at:
+
+- `deploy/aws/evolution-api-ecs-fargate.yaml`
+- `deploy/aws/README-ecs-fargate.md`
+
+This setup includes:
+
+- ECS Task Definition using image `ACCOUNT.dkr.ecr.REGION.amazonaws.com/evolution-api:<tag>`
+- Container port `8080`
+- Default image `entrypoint/command` preserved
+- Environment + Secrets split (`DATABASE_CONNECTION_URI` and `AUTHENTICATION_API_KEY` via `secrets`)
+- Private subnets for tasks, ALB + Target Group + HTTPS listener with ACM
+- Autoscaling by CPU and memory with min 1 task
+- CloudWatch logs (`awslogs`) and alarms (5xx, latency, running tasks)
+- Redis and PostgreSQL wiring for production (`sslmode=require` in database URI)

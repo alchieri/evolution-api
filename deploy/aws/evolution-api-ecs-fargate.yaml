@@ -1,0 +1,385 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Evolution API on ECS Fargate with ALB, autoscaling, CloudWatch alarms and secure secrets.
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: prod
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  PrivateSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Private subnets for ECS tasks.
+  AlbSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Public subnets for ALB.
+  AlbCertificateArn:
+    Type: String
+    Description: ACM certificate ARN for HTTPS listener.
+  AllowedCidrForAlb:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: Ingress CIDR allowed to access ALB HTTPS listener.
+  ContainerImage:
+    Type: String
+    Description: ACCOUNT.dkr.ecr.REGION.amazonaws.com/evolution-api:<tag>
+  ContainerPort:
+    Type: Number
+    Default: 8080
+  HealthCheckPath:
+    Type: String
+    Default: /
+    Description: Evolution API health endpoint path.
+  DesiredCount:
+    Type: Number
+    Default: 1
+    MinValue: 1
+  MinCapacity:
+    Type: Number
+    Default: 1
+    MinValue: 1
+  MaxCapacity:
+    Type: Number
+    Default: 4
+    MinValue: 1
+  Cpu:
+    Type: Number
+    Default: 1024
+    AllowedValues: [256, 512, 1024, 2048, 4096]
+  Memory:
+    Type: Number
+    Default: 2048
+  DatabaseConnectionUriSecretArn:
+    Type: String
+    Description: Secrets Manager/SSM ARN that stores DATABASE_CONNECTION_URI (with sslmode=require).
+  AuthenticationApiKeySecretArn:
+    Type: String
+    Description: Secrets Manager/SSM ARN that stores AUTHENTICATION_API_KEY.
+  RedisUri:
+    Type: String
+    Description: "ElastiCache Redis URI. Ex.: redis://my-redis.xxxxxx.use1.cache.amazonaws.com:6379/0"
+  TaskExecutionRoleArn:
+    Type: String
+    Description: ECS task execution role ARN (must allow ECR + CloudWatch Logs + secret reads).
+  TaskRoleArn:
+    Type: String
+    Description: Application task role ARN.
+  RdsSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Security Group ID attached to RDS PostgreSQL.
+  RedisSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Security Group ID attached to ElastiCache Redis.
+
+Resources:
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub '${EnvironmentName}-evolution-api'
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ALB SG for Evolution API
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref AllowedCidrForAlb
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  ServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ECS tasks SG for Evolution API
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref ContainerPort
+          ToPort: !Ref ContainerPort
+          SourceSecurityGroupId: !Ref AlbSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+
+  RdsIngressFromService:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref RdsSecurityGroupId
+      IpProtocol: tcp
+      FromPort: 5432
+      ToPort: 5432
+      SourceSecurityGroupId: !Ref ServiceSecurityGroup
+
+  RedisIngressFromService:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref RedisSecurityGroupId
+      IpProtocol: tcp
+      FromPort: 6379
+      ToPort: 6379
+      SourceSecurityGroupId: !Ref ServiceSecurityGroup
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ecs/${EnvironmentName}/evolution-api'
+      RetentionInDays: 30
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${EnvironmentName}-evolution-api'
+      Cpu: !Ref Cpu
+      Memory: !Ref Memory
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      ExecutionRoleArn: !Ref TaskExecutionRoleArn
+      TaskRoleArn: !Ref TaskRoleArn
+      RuntimePlatform:
+        CpuArchitecture: X86_64
+        OperatingSystemFamily: LINUX
+      ContainerDefinitions:
+        - Name: evolution-api
+          Image: !Ref ContainerImage
+          Essential: true
+          PortMappings:
+            - ContainerPort: !Ref ContainerPort
+              Protocol: tcp
+          # command/entrypoint not set intentionally to keep image defaults
+          Environment:
+            - Name: SERVER_TYPE
+              Value: http
+            - Name: SERVER_PORT
+              Value: !Sub '${ContainerPort}'
+            - Name: DATABASE_PROVIDER
+              Value: postgresql
+            - Name: CACHE_REDIS_ENABLED
+              Value: 'true'
+            - Name: CACHE_REDIS_URI
+              Value: !Ref RedisUri
+            - Name: CACHE_REDIS_SAVE_INSTANCES
+              Value: 'true'
+            - Name: CACHE_REDIS_TTL
+              Value: '604800'
+            - Name: CACHE_REDIS_PREFIX_KEY
+              Value: evolution-cache
+            - Name: CONFIG_SESSION_PHONE_CLIENT
+              Value: Evolution API
+            - Name: AUTHENTICATION_TYPE
+              Value: apikey
+            - Name: DEL_INSTANCE
+              Value: 'false'
+          Secrets:
+            - Name: DATABASE_CONNECTION_URI
+              ValueFrom: !Ref DatabaseConnectionUriSecretArn
+            - Name: AUTHENTICATION_API_KEY
+              ValueFrom: !Ref AuthenticationApiKeySecretArn
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub '${EnvironmentName}-evo-alb'
+      Scheme: internet-facing
+      Type: application
+      Subnets: !Ref AlbSubnetIds
+      SecurityGroups:
+        - !Ref AlbSecurityGroup
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub '${EnvironmentName}-evo-tg'
+      VpcId: !Ref VpcId
+      Port: !Ref ContainerPort
+      Protocol: HTTP
+      TargetType: ip
+      HealthCheckEnabled: true
+      HealthCheckPath: !Ref HealthCheckPath
+      HealthCheckProtocol: HTTP
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+      Matcher:
+        HttpCode: 200-399
+
+  HttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref AlbCertificateArn
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref TargetGroup
+
+  Service:
+    Type: AWS::ECS::Service
+    DependsOn: HttpsListener
+    Properties:
+      ServiceName: !Sub '${EnvironmentName}-evolution-api'
+      Cluster: !Ref Cluster
+      LaunchType: FARGATE
+      DesiredCount: !Ref DesiredCount
+      TaskDefinition: !Ref TaskDefinition
+      HealthCheckGracePeriodSeconds: 90
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100
+        MaximumPercent: 200
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets: !Ref PrivateSubnetIds
+          SecurityGroups:
+            - !Ref ServiceSecurityGroup
+      LoadBalancers:
+        - ContainerName: evolution-api
+          ContainerPort: !Ref ContainerPort
+          TargetGroupArn: !Ref TargetGroup
+
+  AutoScalingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: application-autoscaling.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ecs-service-autoscaling
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - application-autoscaling:*
+                  - ecs:DescribeServices
+                  - ecs:UpdateService
+                  - cloudwatch:PutMetricAlarm
+                  - cloudwatch:DeleteAlarms
+                  - cloudwatch:DescribeAlarms
+                Resource: '*'
+
+  ScalableTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      MaxCapacity: !Ref MaxCapacity
+      MinCapacity: !Ref MinCapacity
+      ResourceId: !Sub 'service/${Cluster}/${Service.Name}'
+      RoleARN: !GetAtt AutoScalingRole.Arn
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+
+  CpuScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub '${EnvironmentName}-cpu-scaling'
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref ScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageCPUUtilization
+        TargetValue: 65
+        ScaleInCooldown: 120
+        ScaleOutCooldown: 60
+
+  MemoryScalingPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: !Sub '${EnvironmentName}-memory-scaling'
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref ScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ECSServiceAverageMemoryUtilization
+        TargetValue: 75
+        ScaleInCooldown: 120
+        ScaleOutCooldown: 60
+
+  Alb5xxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${EnvironmentName}-evolution-api-alb-5xx'
+      AlarmDescription: Alarm on ALB 5xx responses
+      Namespace: AWS/ApplicationELB
+      MetricName: HTTPCode_Target_5XX_Count
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 5
+      Threshold: 10
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !GetAtt LoadBalancer.LoadBalancerFullName
+        - Name: TargetGroup
+          Value: !GetAtt TargetGroup.TargetGroupFullName
+
+  AlbLatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${EnvironmentName}-evolution-api-alb-latency'
+      AlarmDescription: Alarm on high ALB target response time
+      Namespace: AWS/ApplicationELB
+      MetricName: TargetResponseTime
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 5
+      Threshold: 1.5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !GetAtt LoadBalancer.LoadBalancerFullName
+        - Name: TargetGroup
+          Value: !GetAtt TargetGroup.TargetGroupFullName
+
+  ServiceDownAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${EnvironmentName}-evolution-api-running-tasks'
+      AlarmDescription: Alarm when service has no running tasks (potential restart/crash loop issue).
+      Namespace: AWS/ECS
+      MetricName: RunningTaskCount
+      Statistic: Minimum
+      Period: 60
+      EvaluationPeriods: 3
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      TreatMissingData: breaching
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref Cluster
+        - Name: ServiceName
+          Value: !GetAtt Service.Name
+
+Outputs:
+  ClusterName:
+    Value: !Ref Cluster
+  ServiceName:
+    Value: !GetAtt Service.Name
+  TaskDefinitionArn:
+    Value: !Ref TaskDefinition
+  LoadBalancerDns:
+    Value: !GetAtt LoadBalancer.DNSName
+  HttpsListenerArn:
+    Value: !Ref HttpsListener
+  TargetGroupArn:
+    Value: !Ref TargetGroup
