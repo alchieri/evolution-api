@@ -1,0 +1,3822 @@
+{
+  "info": {
+    "name": "Evolution API - Collection Completa (PT-BR)",
+    "description": "Collection completa gerada automaticamente a partir das rotas do projeto.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "noauth"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "apikey",
+      "value": "SUA_API_KEY"
+    },
+    {
+      "key": "instanceName",
+      "value": "minha-instancia"
+    },
+    {
+      "key": "openaiCredsId",
+      "value": "1"
+    },
+    {
+      "key": "openaiBotId",
+      "value": "1"
+    },
+    {
+      "key": "typebotId",
+      "value": "1"
+    },
+    {
+      "key": "difyId",
+      "value": "1"
+    },
+    {
+      "key": "evolutionBotId",
+      "value": "1"
+    },
+    {
+      "key": "flowiseId",
+      "value": "1"
+    },
+    {
+      "key": "n8nId",
+      "value": "1"
+    },
+    {
+      "key": "evoaiId",
+      "value": "1"
+    }
+  ],
+  "item": [
+    {
+      "name": "Geral",
+      "item": [
+        {
+          "name": "GET /metrics",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Geral.\nAjuste o payload e query params conforme os schemas da rota.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/metrics"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /verify-creds",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Geral.\nAjuste o payload e query params conforme os schemas da rota.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/verify-creds",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Instance",
+      "item": [
+        {
+          "name": "POST /instance/restart/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Instance.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/instance/restart/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /instance/connect/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Instance.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/instance/connect/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /instance/connectionState/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Instance.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/instance/connectionState/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /instance/fetchInstances",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Instance.\nAjuste o payload e query params conforme os schemas da rota.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/instance/fetchInstances"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /instance/setPresence/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Instance.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/instance/setPresence/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /instance/logout/:instanceName",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Instance.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/instance/logout/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /instance/delete/:instanceName",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Instance.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/instance/delete/{{instanceName}}"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Message",
+      "item": [
+        {
+          "name": "POST /message/sendTemplate/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Message.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/message/sendTemplate/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /message/sendText/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Message.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/message/sendText/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /message/sendMedia/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Message.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/message/sendMedia/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /message/sendPtv/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Message.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/message/sendPtv/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /message/sendWhatsAppAudio/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Message.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/message/sendWhatsAppAudio/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /message/sendStatus/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Message.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/message/sendStatus/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /message/sendSticker/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Message.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/message/sendSticker/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /message/sendLocation/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Message.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/message/sendLocation/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /message/sendContact/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Message.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/message/sendContact/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /message/sendReaction/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Message.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/message/sendReaction/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /message/sendPoll/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Message.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/message/sendPoll/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /message/sendList/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Message.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/message/sendList/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /message/sendButtons/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Message.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/message/sendButtons/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Chat",
+      "item": [
+        {
+          "name": "POST /chat/whatsappNumbers/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/whatsappNumbers/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /chat/markMessageAsRead/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/markMessageAsRead/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /chat/archiveChat/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/archiveChat/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /chat/markChatUnread/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/markChatUnread/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /chat/deleteMessageForEveryone/:instanceName",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/deleteMessageForEveryone/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /chat/fetchProfilePictureUrl/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/fetchProfilePictureUrl/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /chat/getBase64FromMediaMessage/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/getBase64FromMediaMessage/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /chat/updateMessage/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/updateMessage/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /chat/sendPresence/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/sendPresence/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /chat/updateBlockStatus/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/updateBlockStatus/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /chat/findContacts/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/findContacts/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /chat/findMessages/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/findMessages/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /chat/findStatusMessage/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/findStatusMessage/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /chat/findChats/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/findChats/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /chat/findChatByRemoteJid/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/findChatByRemoteJid/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /chat/fetchBusinessProfile/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/fetchBusinessProfile/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /chat/fetchProfile/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/fetchProfile/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /chat/updateProfileName/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/updateProfileName/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /chat/updateProfileStatus/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/updateProfileStatus/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /chat/updateProfilePicture/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/updateProfilePicture/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /chat/removeProfilePicture/:instanceName",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/removeProfilePicture/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /chat/fetchPrivacySettings/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/fetchPrivacySettings/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /chat/updatePrivacySettings/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chat.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chat/updatePrivacySettings/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Group",
+      "item": [
+        {
+          "name": "POST /group/create/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Group.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/group/create/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /group/updateGroupSubject/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Group.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/group/updateGroupSubject/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /group/updateGroupPicture/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Group.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/group/updateGroupPicture/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /group/updateGroupDescription/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Group.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/group/updateGroupDescription/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /group/findGroupInfos/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Group.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/group/findGroupInfos/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /group/fetchAllGroups/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Group.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/group/fetchAllGroups/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /group/participants/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Group.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/group/participants/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /group/inviteCode/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Group.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/group/inviteCode/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /group/inviteInfo/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Group.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/group/inviteInfo/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /group/acceptInviteCode/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Group.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/group/acceptInviteCode/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /group/sendInvite/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Group.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/group/sendInvite/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /group/revokeInviteCode/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Group.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/group/revokeInviteCode/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /group/updateParticipant/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Group.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/group/updateParticipant/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /group/updateSetting/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Group.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/group/updateSetting/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /group/toggleEphemeral/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Group.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/group/toggleEphemeral/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /group/leaveGroup/:instanceName",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Group.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/group/leaveGroup/{{instanceName}}"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Business",
+      "item": [
+        {
+          "name": "POST /business/getCatalog/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Business.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/business/getCatalog/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /business/getCollections/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Business.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/business/getCollections/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Template",
+      "item": [
+        {
+          "name": "POST /template/create/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Template.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/template/create/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /template/edit/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Template.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/template/edit/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /template/delete/:instanceName",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Template.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/template/delete/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /template/find/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Template.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/template/find/{{instanceName}}"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Label",
+      "item": [
+        {
+          "name": "GET /label/findLabels/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Label.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/label/findLabels/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /label/handleLabel/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Label.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/label/handleLabel/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Proxy",
+      "item": [
+        {
+          "name": "POST /proxy/set/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Proxy.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/proxy/set/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /proxy/find/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Proxy.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/proxy/find/{{instanceName}}"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Settings",
+      "item": [
+        {
+          "name": "POST /settings/set/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Settings.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/settings/set/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /settings/find/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Settings.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/settings/find/{{instanceName}}"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Call",
+      "item": [
+        {
+          "name": "POST /call/offer/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Call.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/call/offer/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Baileys",
+      "item": [
+        {
+          "name": "POST /baileys/onWhatsapp/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Baileys.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/baileys/onWhatsapp/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /baileys/profilePictureUrl/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Baileys.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/baileys/profilePictureUrl/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /baileys/assertSessions/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Baileys.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/baileys/assertSessions/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /baileys/createParticipantNodes/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Baileys.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/baileys/createParticipantNodes/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /baileys/getUSyncDevices/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Baileys.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/baileys/getUSyncDevices/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /baileys/generateMessageTag/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Baileys.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/baileys/generateMessageTag/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /baileys/sendNode/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Baileys.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/baileys/sendNode/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /baileys/signalRepositoryDecryptMessage/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Baileys.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/baileys/signalRepositoryDecryptMessage/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /baileys/getAuthState/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Baileys.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/baileys/getAuthState/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Webhooks Canal",
+      "item": [
+        {
+          "name": "GET /webhook/meta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "description": "Endpoint do grupo Webhooks Canal.\nAjuste o payload e query params conforme os schemas da rota.",
+            "url": "{{baseUrl}}/webhook/meta"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /webhook/meta",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "description": "Endpoint do grupo Webhooks Canal.\nAjuste o payload e query params conforme os schemas da rota.",
+            "url": "{{baseUrl}}/webhook/meta",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /webhook/evolution",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "description": "Endpoint do grupo Webhooks Canal.\nAjuste o payload e query params conforme os schemas da rota.",
+            "url": "{{baseUrl}}/webhook/evolution",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Eventos",
+      "item": [
+        {
+          "name": "POST /webhook/set/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Eventos.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/webhook/set/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /webhook/find/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Eventos.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/webhook/find/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /websocket/set/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Eventos.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/websocket/set/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /websocket/find/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Eventos.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/websocket/find/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /rabbitmq/set/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Eventos.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/rabbitmq/set/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /rabbitmq/find/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Eventos.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/rabbitmq/find/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /sqs/set/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Eventos.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/sqs/set/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /sqs/find/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Eventos.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/sqs/find/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /nats/set/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Eventos.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/nats/set/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /nats/find/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Eventos.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/nats/find/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /kafka/set/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Eventos.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/kafka/set/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /kafka/find/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Eventos.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/kafka/find/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /pusher/set/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Eventos.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/pusher/set/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /pusher/find/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Eventos.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/pusher/find/{{instanceName}}"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Chatbots",
+      "item": [
+        {
+          "name": "POST /chatwoot/set/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chatwoot/set/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /chatwoot/find/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chatwoot/find/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /chatwoot/webhook/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/chatwoot/webhook/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /openai/creds/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/openai/creds/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /openai/creds/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/openai/creds/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /openai/creds/:openaiCredsId/:instanceName",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/openai/creds/{{openaiCredsId}}/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /openai/create/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/openai/create/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /openai/find/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/openai/find/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /openai/fetch/:openaiBotId/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/openai/fetch/{{openaiBotId}}/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /openai/update/:openaiBotId/:instanceName",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/openai/update/{{openaiBotId}}/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /openai/delete/:openaiBotId/:instanceName",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/openai/delete/{{openaiBotId}}/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /openai/settings/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/openai/settings/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /openai/fetchSettings/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/openai/fetchSettings/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /openai/changeStatus/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/openai/changeStatus/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /openai/fetchSessions/:openaiBotId/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/openai/fetchSessions/{{openaiBotId}}/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /openai/ignoreJid/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/openai/ignoreJid/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /openai/getModels/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/openai/getModels/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /typebot/create/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/typebot/create/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /typebot/find/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/typebot/find/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /typebot/fetch/:typebotId/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/typebot/fetch/{{typebotId}}/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /typebot/update/:typebotId/:instanceName",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/typebot/update/{{typebotId}}/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /typebot/delete/:typebotId/:instanceName",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/typebot/delete/{{typebotId}}/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /typebot/settings/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/typebot/settings/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /typebot/fetchSettings/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/typebot/fetchSettings/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /typebot/start/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/typebot/start/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /typebot/changeStatus/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/typebot/changeStatus/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /typebot/fetchSessions/:typebotId/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/typebot/fetchSessions/{{typebotId}}/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /typebot/ignoreJid/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/typebot/ignoreJid/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /dify/create/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/dify/create/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /dify/find/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/dify/find/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /dify/fetch/:difyId/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/dify/fetch/{{difyId}}/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /dify/update/:difyId/:instanceName",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/dify/update/{{difyId}}/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /dify/delete/:difyId/:instanceName",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/dify/delete/{{difyId}}/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /dify/settings/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/dify/settings/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /dify/fetchSettings/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/dify/fetchSettings/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /dify/changeStatus/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/dify/changeStatus/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /dify/fetchSessions/:difyId/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/dify/fetchSessions/{{difyId}}/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /dify/ignoreJid/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/dify/ignoreJid/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /evolutionBot/create/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/evolutionBot/create/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /evolutionBot/find/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/evolutionBot/find/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /evolutionBot/fetch/:evolutionBotId/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/evolutionBot/fetch/{{evolutionBotId}}/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /evolutionBot/update/:evolutionBotId/:instanceName",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/evolutionBot/update/{{evolutionBotId}}/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /evolutionBot/delete/:evolutionBotId/:instanceName",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/evolutionBot/delete/{{evolutionBotId}}/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /evolutionBot/settings/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/evolutionBot/settings/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /evolutionBot/fetchSettings/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/evolutionBot/fetchSettings/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /evolutionBot/changeStatus/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/evolutionBot/changeStatus/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /evolutionBot/fetchSessions/:evolutionBotId/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/evolutionBot/fetchSessions/{{evolutionBotId}}/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /evolutionBot/ignoreJid/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/evolutionBot/ignoreJid/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /flowise/create/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/flowise/create/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /flowise/find/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/flowise/find/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /flowise/fetch/:flowiseId/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/flowise/fetch/{{flowiseId}}/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /flowise/update/:flowiseId/:instanceName",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/flowise/update/{{flowiseId}}/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /flowise/delete/:flowiseId/:instanceName",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/flowise/delete/{{flowiseId}}/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /flowise/settings/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/flowise/settings/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /flowise/fetchSettings/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/flowise/fetchSettings/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /flowise/changeStatus/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/flowise/changeStatus/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /flowise/fetchSessions/:flowiseId/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/flowise/fetchSessions/{{flowiseId}}/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /flowise/ignoreJid/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/flowise/ignoreJid/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /n8n/create/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/n8n/create/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /n8n/find/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/n8n/find/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /n8n/fetch/:n8nId/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/n8n/fetch/{{n8nId}}/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /n8n/update/:n8nId/:instanceName",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/n8n/update/{{n8nId}}/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /n8n/delete/:n8nId/:instanceName",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/n8n/delete/{{n8nId}}/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /n8n/settings/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/n8n/settings/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /n8n/fetchSettings/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/n8n/fetchSettings/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /n8n/changeStatus/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/n8n/changeStatus/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /n8n/fetchSessions/:n8nId/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/n8n/fetchSessions/{{n8nId}}/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /n8n/ignoreJid/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/n8n/ignoreJid/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /evoai/create/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/evoai/create/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /evoai/find/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/evoai/find/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "GET /evoai/fetch/:evoaiId/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/evoai/fetch/{{evoaiId}}/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "PUT /evoai/update/:evoaiId/:instanceName",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/evoai/update/{{evoaiId}}/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE /evoai/delete/:evoaiId/:instanceName",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/evoai/delete/{{evoaiId}}/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /evoai/settings/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/evoai/settings/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /evoai/fetchSettings/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/evoai/fetchSettings/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /evoai/changeStatus/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/evoai/changeStatus/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "GET /evoai/fetchSessions/:evoaiId/:instanceName",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/evoai/fetchSessions/{{evoaiId}}/{{instanceName}}"
+          },
+          "response": []
+        },
+        {
+          "name": "POST /evoai/ignoreJid/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo Chatbots.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/evoai/ignoreJid/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "S3",
+      "item": [
+        {
+          "name": "POST /s3/getMedia/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo S3.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/s3/getMedia/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "POST /s3/getMediaUrl/:instanceName",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "apikey",
+                "value": "{{apikey}}"
+              }
+            ],
+            "description": "Endpoint do grupo S3.\nAjuste o payload e query params conforme os schemas da rota.\nRota multi-tenant: requer `instanceName` no path.\nAutenticação: enviar header `apikey`.",
+            "url": "{{baseUrl}}/s3/getMediaUrl/{{instanceName}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
