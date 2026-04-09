@@ -142,3 +142,27 @@ Please contact contato@evolution-api.com to inquire about licensing matters.
 Apart from the specific conditions mentioned above, all other rights and restrictions follow the Apache License 2.0. Detailed information about the Apache License 2.0 can be found at [http://www.apache.org/licenses/LICENSE-2.0](http://www.apache.org/licenses/LICENSE-2.0).
 
 © 2025 Evolution API
+
+## Publish Docker image to AWS ECR
+
+You can publish the root `Dockerfile` image to AWS ECR with the helper script:
+
+```bash
+export AWS_REGION=us-east-1
+export AWS_ACCOUNT_ID=123456789012
+export ECR_REPOSITORY=evolution-api
+export IMAGE_TAG=v2.3.1-prod
+# optional stable tag
+export STABLE_TAG=prod
+
+./scripts/push-ecr.sh
+```
+
+The script performs this flow automatically:
+
+1. Creates the ECR repository when it does not exist.
+2. Logs in to ECR.
+3. Builds `Dockerfile` from repository root.
+4. Tags image with ECR URI.
+5. Pushes image to ECR.
+6. Optionally tags/pushes a stable tag (`STABLE_TAG`).
