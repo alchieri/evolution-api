@@ -145,7 +145,9 @@ Apart from the specific conditions mentioned above, all other rights and restric
 
 ## Publish Docker image to AWS ECR
 
-You can publish the root `Dockerfile` image to AWS ECR with the helper script:
+You can publish the root `Dockerfile` image to AWS ECR with helper scripts for Linux/macOS (`bash`) and Windows (`PowerShell`).
+
+### Linux / macOS (bash)
 
 ```bash
 export AWS_REGION=us-east-1
@@ -156,6 +158,19 @@ export IMAGE_TAG=v2.3.1-prod
 export STABLE_TAG=prod
 
 ./scripts/push-ecr.sh
+```
+
+### Windows (PowerShell)
+
+```powershell
+$env:AWS_REGION = 'us-east-1'
+$env:AWS_ACCOUNT_ID = '123456789012'
+$env:ECR_REPOSITORY = 'evolution-api'
+$env:IMAGE_TAG = 'v2.3.1-prod'
+# optional stable tag
+$env:STABLE_TAG = 'prod'
+
+./scripts/push-ecr.ps1
 ```
 
 The script performs this flow automatically:
