@@ -162,6 +162,14 @@ export interface ExtendedIMessageKey extends proto.IMessageKey {
   isViewOnce?: boolean;
 }
 
+interface ConnectionErrorDiagnostics {
+  category: string;
+  closeCode?: number;
+  message?: string;
+  reason?: string;
+  rawError?: unknown;
+}
+
 const groupMetadataCache = new CacheService(new CacheEngine(configService, 'groups').getEngine());
 
 // Adicione a função getVideoDuration no início do arquivo
@@ -251,6 +259,10 @@ export class BaileysStartupService extends ChannelStartupService {
   private endSession = false;
   private logBaileys = this.configService.get<Log>('LOG').BAILEYS;
   private eventProcessingQueue: Promise<void> = Promise.resolve();
+  private activeRecoverySessionId: string | null = null;
+  private recoveryStartedAt: number | null = null;
+  private recoveryRetryAttempt = 0;
+  private lastOpenAt: number | null = null;
 
   // Cache TTL constants (in seconds)
   private readonly MESSAGE_CACHE_TTL_SECONDS = 5 * 60; // 5 minutes - avoid duplicate message processing
@@ -328,6 +340,32 @@ export class BaileysStartupService extends ChannelStartupService {
       code: this.instance.qrcode?.code,
       base64: this.instance.qrcode?.base64,
       count: this.instance.qrcode?.count,
+    };
+  }
+
+  private classifyConnectionError(lastDisconnect?: ConnectionState['lastDisconnect']): ConnectionErrorDiagnostics {
+    const closeCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
+    const payload = (lastDisconnect?.error as any)?.payload;
+    const message = (lastDisconnect?.error as Error)?.message || payload?.message || '';
+
+    let category = 'unknown';
+
+    if (closeCode === DisconnectReason.timedOut || /timed out|ping timeout|keep alive/i.test(message)) {
+      category = 'ping_timeout';
+    } else if (closeCode === DisconnectReason.connectionClosed || /connection (was )?closed/i.test(message)) {
+      category = 'ws_close_remote';
+    } else if (/reset|econnreset|socket hang up/i.test(message)) {
+      category = 'network_reset';
+    } else if (/tls|ssl|secure tls/i.test(message)) {
+      category = 'tls_close';
+    }
+
+    return {
+      category,
+      closeCode,
+      message,
+      reason: DisconnectReason[closeCode] || `${closeCode ?? 'unknown'}`,
+      rawError: lastDisconnect?.error,
     };
   }
 
@@ -427,6 +465,43 @@ export class BaileysStartupService extends ChannelStartupService {
       const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
       const codesToNotReconnect = [DisconnectReason.loggedOut, DisconnectReason.forbidden, 402, 406];
       const shouldReconnect = !codesToNotReconnect.includes(statusCode);
+      const diagnostics = this.classifyConnectionError(lastDisconnect);
+      const uptimeBeforeDropMs = this.lastOpenAt ? Date.now() - this.lastOpenAt : null;
+
+      if (!this.activeRecoverySessionId) {
+        this.activeRecoverySessionId = cuid();
+        this.recoveryStartedAt = Date.now();
+        this.recoveryRetryAttempt = 0;
+      }
+
+      this.recoveryRetryAttempt += 1;
+
+      this.logger.error({
+        msg: 'connection errored',
+        instance: this.instance.name,
+        category: diagnostics.category,
+        closeCode: statusCode,
+        isReconnecting: shouldReconnect,
+        retryAttempt: this.recoveryRetryAttempt,
+        uptimeBeforeDropMs,
+        correlationId: this.activeRecoverySessionId,
+        sessionId: this.activeRecoverySessionId,
+        reason: diagnostics.reason,
+        rawError: diagnostics.rawError,
+      });
+
+      if (diagnostics.category === 'ping_timeout') {
+        this.logger.error({
+          msg: 'error in sending keep alive',
+          instance: this.instance.name,
+          closeCode: statusCode,
+          correlationId: this.activeRecoverySessionId,
+          sessionId: this.activeRecoverySessionId,
+          retryAttempt: this.recoveryRetryAttempt,
+          isReconnecting: shouldReconnect,
+        });
+      }
+
       if (shouldReconnect) {
         await this.connectToWhatsapp(this.phoneNumber);
       } else {
@@ -465,6 +540,22 @@ export class BaileysStartupService extends ChannelStartupService {
     }
 
     if (connection === 'open') {
+      if (this.activeRecoverySessionId && this.recoveryStartedAt) {
+        this.logger.log({
+          msg: 'connection recovery completed',
+          instance: this.instance.name,
+          correlationId: this.activeRecoverySessionId,
+          sessionId: this.activeRecoverySessionId,
+          retryAttempt: this.recoveryRetryAttempt,
+          totalRecoveryMs: Date.now() - this.recoveryStartedAt,
+        });
+      }
+
+      this.activeRecoverySessionId = null;
+      this.recoveryStartedAt = null;
+      this.recoveryRetryAttempt = 0;
+      this.lastOpenAt = Date.now();
+
       this.instance.wuid = this.client.user.id.replace(/:\d+/, '');
       try {
         const profilePic = await this.profilePicture(this.instance.wuid);
