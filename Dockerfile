@@ -33,7 +33,7 @@ RUN npm run build
 FROM node:24-alpine AS final
 
 RUN apk update && \
-    apk add tzdata ffmpeg bash openssl
+    apk add tzdata ffmpeg bash openssl gcompat
 
 ENV TZ=America/Sao_Paulo
 ENV DOCKER_ENV=true

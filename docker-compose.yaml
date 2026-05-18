@@ -17,6 +17,8 @@ services:
       - dokploy-network
     env_file:
       - .env
+    environment:
+      - NODE_OPTIONS=--dns-result-order=ipv4first
     expose:
       - "8080"
 
