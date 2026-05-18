@@ -132,6 +132,22 @@ export class WebhookController extends EventController implements EventControlle
 
     const hasApiKey = Boolean(webhookData.apikey);
     const shouldBlockByMissingApiKey = shouldRequireApiKey && !hasApiKey && !allowWithoutCredential;
+    const localWebhookLogPayload = {
+      instanceName,
+      event,
+      we,
+      destination: instance?.url,
+      enabled: instance?.enabled,
+      webhookByEvents: instance?.webhookByEvents,
+    };
+
+    if (!instance) {
+      this.logger.debug({
+        local: `${origin}.sendData-Webhook`,
+        reason: 'instance_not_found',
+        ...localWebhookLogPayload,
+      });
+    }
 
     if (local && instance?.enabled) {
       if (Array.isArray(webhookLocal) && webhookLocal.includes(we)) {
@@ -159,10 +175,9 @@ export class WebhookController extends EventController implements EventControlle
               this.logger.warn({
                 local: `${origin}.sendData-Webhook`,
                 message: 'Webhook blocked due to missing required apikey credential',
-                instance: instanceName,
-                event,
-                destination: baseURL,
                 reason: 'missing_required_apikey',
+                ...localWebhookLogPayload,
+                destination: baseURL,
               });
               return;
             }
@@ -174,6 +189,13 @@ export class WebhookController extends EventController implements EventControlle
             });
 
             await this.retryWebhookRequest(httpService, webhookData, `${origin}.sendData-Webhook`, baseURL, serverUrl);
+          } else if (instance?.enabled && !regex.test(instance.url)) {
+            this.logger.warn({
+              local: `${origin}.sendData-Webhook`,
+              reason: 'invalid_url',
+              ...localWebhookLogPayload,
+              destination: instance?.webhookByEvents ? `${instance?.url}/${transformedWe}` : instance?.url,
+            });
           }
         } catch (error) {
           this.logger.error({
@@ -189,7 +211,19 @@ export class WebhookController extends EventController implements EventControlle
             server_url: serverUrl,
           });
         }
+      } else {
+        this.logger.debug({
+          local: `${origin}.sendData-Webhook`,
+          reason: 'event_not_enabled',
+          ...localWebhookLogPayload,
+        });
       }
+    } else if (local && instance && !instance.enabled) {
+      this.logger.debug({
+        local: `${origin}.sendData-Webhook`,
+        reason: 'webhook_disabled',
+        ...localWebhookLogPayload,
+      });
     }
 
     if (webhookConfig.GLOBAL?.ENABLED) {
