@@ -38,7 +38,10 @@ export class WebhookController extends EventController implements EventControlle
         enabled: data.webhook?.enabled,
         events: data.webhook?.events,
         url: data.webhook?.url,
-        headers: data.webhook?.headers,
+        headers: {
+          ...((data.webhook?.headers as Record<string, unknown>) || {}),
+          auth: data.webhook?.auth || undefined,
+        },
         webhookBase64: data.webhook.base64,
         webhookByEvents: data.webhook.byEvents,
       },
@@ -47,7 +50,10 @@ export class WebhookController extends EventController implements EventControlle
         events: data.webhook?.events,
         instanceId: this.monitor.waInstances[instanceName].instanceId,
         url: data.webhook?.url,
-        headers: data.webhook?.headers,
+        headers: {
+          ...((data.webhook?.headers as Record<string, unknown>) || {}),
+          auth: data.webhook?.auth || undefined,
+        },
         webhookBase64: data.webhook.base64,
         webhookByEvents: data.webhook.byEvents,
       },
@@ -76,6 +82,20 @@ export class WebhookController extends EventController implements EventControlle
     const webhookConfig = configService.get<Webhook>('WEBHOOK');
     const webhookLocal = instance?.events;
     const webhookHeaders = { ...((instance?.headers as Record<string, string>) || {}) };
+    const webhookAuth = instance?.auth ||
+      (instance?.headers &&
+      typeof instance.headers === 'object' &&
+      !Array.isArray(instance.headers) &&
+      'auth' in instance.headers &&
+      typeof instance.headers.auth === 'object'
+        ? (instance.headers.auth as wa.LocalWebHook['auth'])
+        : undefined) || {
+        type: 'apikey',
+        required: false,
+        allowWithoutCredential: true,
+        headerName: 'apikey',
+      };
+    delete (webhookHeaders as Record<string, unknown>).auth;
 
     if (webhookHeaders && 'jwt_key' in webhookHeaders) {
       const jwtKey = webhookHeaders['jwt_key'];
@@ -102,6 +122,17 @@ export class WebhookController extends EventController implements EventControlle
       apikey: apiKey,
     };
 
+    const shouldRequireApiKey = webhookAuth.type === 'apikey' && (webhookAuth.required ?? false);
+    const fallbackApiKey = webhookAuth.fallbackApiKey;
+    const allowWithoutCredential = webhookAuth.allowWithoutCredential ?? false;
+
+    if (shouldRequireApiKey && !webhookData.apikey && fallbackApiKey) {
+      webhookData.apikey = fallbackApiKey;
+    }
+
+    const hasApiKey = Boolean(webhookData.apikey);
+    const shouldBlockByMissingApiKey = shouldRequireApiKey && !hasApiKey && !allowWithoutCredential;
+
     if (local && instance?.enabled) {
       if (Array.isArray(webhookLocal) && webhookLocal.includes(we)) {
         let baseURL: string;
@@ -124,6 +155,18 @@ export class WebhookController extends EventController implements EventControlle
 
         try {
           if (instance?.enabled && regex.test(instance.url)) {
+            if (shouldBlockByMissingApiKey) {
+              this.logger.warn({
+                local: `${origin}.sendData-Webhook`,
+                message: 'Webhook blocked due to missing required apikey credential',
+                instance: instanceName,
+                event,
+                destination: baseURL,
+                reason: 'missing_required_apikey',
+              });
+              return;
+            }
+
             const httpService = axios.create({
               baseURL,
               headers: webhookHeaders as Record<string, string> | undefined,
