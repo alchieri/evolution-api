@@ -17,6 +17,10 @@ export class WebhookController extends EventController implements EventControlle
     super(prismaRepository, waMonitor, true, 'webhook');
   }
 
+  private normalizeWebhookEvent(event: string): string {
+    return event.trim().replace(/\s+/g, ' ').replace(/[.-]/g, '_').toUpperCase();
+  }
+
   override async set(instanceName: string, data: EventDto): Promise<wa.LocalWebHook> {
     // if (!/^(https?:\/\/)/.test(data.webhook.url)) {
     //   throw new BadRequestException('Invalid "url" property');
@@ -25,6 +29,27 @@ export class WebhookController extends EventController implements EventControlle
     if (!data.webhook?.enabled) {
       data.webhook.events = [];
     } else {
+      const normalizedEvents = (data.webhook.events || [])
+        .map((event) => {
+          const normalizedEvent = this.normalizeWebhookEvent(event);
+
+          if (!EventController.events.includes(normalizedEvent)) {
+            this.logger.warn({
+              local: 'WebhookController.set',
+              message: 'Invalid webhook event ignored during normalization',
+              originalEvent: event,
+              normalizedEvent,
+              instanceName,
+            });
+            return null;
+          }
+
+          return normalizedEvent;
+        })
+        .filter((event): event is string => Boolean(event));
+
+      data.webhook.events = normalizedEvents;
+
       if (0 === data.webhook.events.length) {
         data.webhook.events = EventController.events;
       }
