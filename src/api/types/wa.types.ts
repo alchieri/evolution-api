@@ -98,6 +98,13 @@ export declare namespace wa {
   export type LocalWebHook = LocalEvent & {
     url?: string;
     headers?: JsonValue;
+    auth?: {
+      type?: 'none' | 'apikey';
+      required?: boolean;
+      allowWithoutCredential?: boolean;
+      headerName?: string;
+      fallbackApiKey?: string;
+    };
     webhookByEvents?: boolean;
     webhookBase64?: boolean;
   };

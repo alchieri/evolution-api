@@ -7,6 +7,13 @@ export class EventDto {
     events?: string[];
     url?: string;
     headers?: JsonValue;
+    auth?: {
+      type?: 'none' | 'apikey';
+      required?: boolean;
+      allowWithoutCredential?: boolean;
+      headerName?: string;
+      fallbackApiKey?: string;
+    };
     byEvents?: boolean;
     base64?: boolean;
   };
@@ -54,6 +61,13 @@ export function EventInstanceMixin<TBase extends Constructor>(Base: TBase) {
       events?: string[];
       headers?: JsonValue;
       url?: string;
+      auth?: {
+        type?: 'none' | 'apikey';
+        required?: boolean;
+        allowWithoutCredential?: boolean;
+        headerName?: string;
+        fallbackApiKey?: string;
+      };
       byEvents?: boolean;
       base64?: boolean;
     };
