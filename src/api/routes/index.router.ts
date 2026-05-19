@@ -140,11 +140,26 @@ if (metricsConfig.ENABLED) {
     lines.push('# TYPE evolution_instance_up gauge');
     lines.push('# HELP evolution_instance_state Instance state as a labelled metric');
     lines.push('# TYPE evolution_instance_state gauge');
+    lines.push('# HELP evolution_ws_uptime_ms_before_drop Uptime in milliseconds before the latest websocket drop');
+    lines.push('# TYPE evolution_ws_uptime_ms_before_drop gauge');
+    lines.push('# HELP evolution_reconnect_attempt_count Total reconnect attempts per instance');
+    lines.push('# TYPE evolution_reconnect_attempt_count counter');
+    lines.push('# HELP evolution_close_code_count Total close events grouped by websocket close/status code');
+    lines.push('# TYPE evolution_close_code_count counter');
+    lines.push('# HELP evolution_keepalive_fail_count Total keepalive failures per instance');
+    lines.push('# TYPE evolution_keepalive_fail_count counter');
+    lines.push(
+      '# HELP evolution_time_to_recover_ms Recovery duration in milliseconds for the latest successful recovery',
+    );
+    lines.push('# TYPE evolution_time_to_recover_ms gauge');
+    lines.push('# HELP evolution_reconnect_rate Reconnection events per rolling window');
+    lines.push('# TYPE evolution_reconnect_rate gauge');
 
     for (const [name, instance] of instanceEntries) {
       const state = instance?.connectionStatus?.state || 'unknown';
       const integration = instance?.integration || '';
       const up = state === 'open' ? 1 : 0;
+      const connectionMetrics = instance?.getConnectionMetricsSnapshot?.();
 
       lines.push(
         `evolution_instance_up{instance="${escapeLabel(name)}",integration="${escapeLabel(integration)}"} ${up}`,
@@ -154,6 +169,36 @@ if (metricsConfig.ENABLED) {
           integration,
         )}",state="${escapeLabel(state)}"} 1`,
       );
+
+      if (connectionMetrics) {
+        lines.push(
+          `evolution_ws_uptime_ms_before_drop{instance="${escapeLabel(name)}"} ${connectionMetrics.wsUptimeMsBeforeDrop}`,
+        );
+        lines.push(
+          `evolution_reconnect_attempt_count{instance="${escapeLabel(name)}"} ${connectionMetrics.reconnectAttemptCount}`,
+        );
+        lines.push(
+          `evolution_keepalive_fail_count{instance="${escapeLabel(name)}"} ${connectionMetrics.keepaliveFailCount}`,
+        );
+        lines.push(
+          `evolution_time_to_recover_ms{instance="${escapeLabel(name)}"} ${connectionMetrics.timeToRecoverMs}`,
+        );
+        lines.push(
+          `evolution_reconnect_rate{instance="${escapeLabel(name)}",window="5m"} ${connectionMetrics.reconnectRate5m}`,
+        );
+        lines.push(
+          `evolution_reconnect_rate{instance="${escapeLabel(name)}",window="15m"} ${connectionMetrics.reconnectRate15m}`,
+        );
+        lines.push(
+          `evolution_reconnect_rate{instance="${escapeLabel(name)}",window="60m"} ${connectionMetrics.reconnectRate60m}`,
+        );
+
+        for (const [code, count] of Object.entries(connectionMetrics.closeCodeCount)) {
+          lines.push(
+            `evolution_close_code_count{instance="${escapeLabel(name)}",code="${escapeLabel(code)}"} ${count}`,
+          );
+        }
+      }
     }
 
     res.send(lines.join('\n') + '\n');

@@ -355,6 +355,7 @@ export type Metrics = {
   USER?: string;
   PASSWORD?: string;
   ALLOWED_IPS?: string;
+  RECOVERY_SLA_MS: number;
 };
 
 export type Telemetry = {
@@ -876,6 +877,7 @@ export class ConfigService {
         USER: process.env?.METRICS_USER,
         PASSWORD: process.env?.METRICS_PASSWORD,
         ALLOWED_IPS: process.env?.METRICS_ALLOWED_IPS,
+        RECOVERY_SLA_MS: Number.parseInt(process.env?.METRICS_RECOVERY_SLA_MS || '120000'),
       },
       TELEMETRY: {
         ENABLED: process.env?.TELEMETRY_ENABLED === undefined || process.env?.TELEMETRY_ENABLED === 'true',
