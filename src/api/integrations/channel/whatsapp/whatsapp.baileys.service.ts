@@ -170,6 +170,12 @@ interface ConnectionErrorDiagnostics {
   rawError?: unknown;
 }
 
+interface ReconnectState {
+  retryAttempt: number;
+  consecutiveFailures: number;
+  circuitOpenUntil: number | null;
+}
+
 const groupMetadataCache = new CacheService(new CacheEngine(configService, 'groups').getEngine());
 
 // Adicione a função getVideoDuration no início do arquivo
@@ -263,6 +269,17 @@ export class BaileysStartupService extends ChannelStartupService {
   private recoveryStartedAt: number | null = null;
   private recoveryRetryAttempt = 0;
   private lastOpenAt: number | null = null;
+  private reconnectState: ReconnectState = {
+    retryAttempt: 0,
+    consecutiveFailures: 0,
+    circuitOpenUntil: null,
+  };
+
+  private readonly RECONNECT_BASE_DELAY_MS = 2000;
+  private readonly RECONNECT_MAX_DELAY_MS = 60000;
+  private readonly RECONNECT_CIRCUIT_FAILURE_LIMIT = 10;
+  private readonly RECONNECT_CIRCUIT_BREAK_MS = 5 * 60 * 1000;
+  private readonly RECONNECT_STATE_CACHE_KEY = 'wa:reconnect-state';
 
   // Cache TTL constants (in seconds)
   private readonly MESSAGE_CACHE_TTL_SECONDS = 5 * 60; // 5 minutes - avoid duplicate message processing
@@ -274,6 +291,31 @@ export class BaileysStartupService extends ChannelStartupService {
 
   public get connectionStatus() {
     return this.stateConnection;
+  }
+
+  private get reconnectStateCacheField() {
+    return this.instanceName;
+  }
+
+  private async loadReconnectState() {
+    const cached = await this.cache.hGet(this.RECONNECT_STATE_CACHE_KEY, this.reconnectStateCacheField);
+    if (cached) {
+      this.reconnectState = cached as ReconnectState;
+      this.recoveryRetryAttempt = this.reconnectState.retryAttempt ?? 0;
+    }
+  }
+
+  private async persistReconnectState() {
+    await this.cache.hSet(this.RECONNECT_STATE_CACHE_KEY, this.reconnectStateCacheField, this.reconnectState);
+  }
+
+  private getReconnectDelayMs(retryAttempt: number) {
+    const exponentialDelay = Math.min(
+      this.RECONNECT_BASE_DELAY_MS * 2 ** Math.max(retryAttempt - 1, 0),
+      this.RECONNECT_MAX_DELAY_MS,
+    );
+    const jitterFactor = 1 + (Math.random() * 0.15 + 0.1);
+    return Math.min(Math.round(exponentialDelay * jitterFactor), this.RECONNECT_MAX_DELAY_MS);
   }
 
   public async logoutInstance() {
@@ -370,6 +412,8 @@ export class BaileysStartupService extends ChannelStartupService {
   }
 
   private async connectionUpdate({ qr, connection, lastDisconnect }: Partial<ConnectionState>) {
+    await this.loadReconnectState();
+
     if (qr) {
       if (this.instance.qrcode.count === this.configService.get<QrCode>('QRCODE').LIMIT) {
         this.sendDataWebhook(Events.QRCODE_UPDATED, {
@@ -475,6 +519,32 @@ export class BaileysStartupService extends ChannelStartupService {
       }
 
       this.recoveryRetryAttempt += 1;
+      this.reconnectState.retryAttempt = this.recoveryRetryAttempt;
+      this.reconnectState.consecutiveFailures += 1;
+
+      const now = Date.now();
+      const diagnosticsCloseCode = diagnostics.closeCode ?? statusCode;
+
+      if (this.reconnectState.consecutiveFailures >= this.RECONNECT_CIRCUIT_FAILURE_LIMIT) {
+        this.reconnectState.circuitOpenUntil = now + this.RECONNECT_CIRCUIT_BREAK_MS;
+        this.logger.warn({
+          msg: 'reconnect circuit breaker opened',
+          instance: this.instance.name,
+          retryAttempt: this.reconnectState.retryAttempt,
+          closeCode: diagnosticsCloseCode,
+          reason: diagnostics.reason,
+          consecutiveFailures: this.reconnectState.consecutiveFailures,
+          circuitOpenUntil: this.reconnectState.circuitOpenUntil,
+        });
+
+        this.sendDataWebhook(Events.STATUS_INSTANCE, {
+          instance: this.instance.name,
+          status: 'reconnect_paused',
+          retryAttempt: this.reconnectState.retryAttempt,
+          consecutiveFailures: this.reconnectState.consecutiveFailures,
+          pauseUntil: new Date(this.reconnectState.circuitOpenUntil),
+        });
+      }
 
       this.logger.error({
         msg: 'connection errored',
@@ -489,6 +559,7 @@ export class BaileysStartupService extends ChannelStartupService {
         reason: diagnostics.reason,
         rawError: diagnostics.rawError,
       });
+      await this.persistReconnectState();
 
       if (diagnostics.category === 'ping_timeout') {
         this.logger.error({
@@ -503,6 +574,30 @@ export class BaileysStartupService extends ChannelStartupService {
       }
 
       if (shouldReconnect) {
+        const circuitOpenUntil = this.reconnectState.circuitOpenUntil;
+        if (circuitOpenUntil && now < circuitOpenUntil) {
+          const pauseDelayMs = circuitOpenUntil - now;
+          this.logger.warn({
+            msg: 'reconnect attempt paused by circuit breaker',
+            instance: this.instance.name,
+            retryAttempt: this.reconnectState.retryAttempt,
+            delayMs: pauseDelayMs,
+            closeCode: diagnosticsCloseCode,
+            reason: diagnostics.reason,
+          });
+          await delay(pauseDelayMs);
+        }
+
+        const delayMs = this.getReconnectDelayMs(this.reconnectState.retryAttempt);
+        this.logger.warn({
+          msg: 'reconnect scheduled',
+          instance: this.instance.name,
+          retryAttempt: this.reconnectState.retryAttempt,
+          delayMs,
+          closeCode: diagnosticsCloseCode,
+          reason: diagnostics.reason,
+        });
+        await delay(delayMs);
         await this.connectToWhatsapp(this.phoneNumber);
       } else {
         this.sendDataWebhook(Events.STATUS_INSTANCE, {
@@ -555,6 +650,12 @@ export class BaileysStartupService extends ChannelStartupService {
       this.recoveryStartedAt = null;
       this.recoveryRetryAttempt = 0;
       this.lastOpenAt = Date.now();
+      this.reconnectState = {
+        retryAttempt: 0,
+        consecutiveFailures: 0,
+        circuitOpenUntil: null,
+      };
+      await this.persistReconnectState();
 
       this.instance.wuid = this.client.user.id.replace(/:\d+/, '');
       try {
