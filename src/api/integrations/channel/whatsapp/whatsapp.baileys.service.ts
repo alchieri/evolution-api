@@ -299,6 +299,7 @@ export class BaileysStartupService extends ChannelStartupService {
   private readonly RECONNECT_MAX_DELAY_MS = 60000;
   private readonly RECONNECT_CIRCUIT_FAILURE_LIMIT = 10;
   private readonly RECONNECT_CIRCUIT_BREAK_MS = 5 * 60 * 1000;
+  private readonly SESSION_REFRESH_FAILURE_THRESHOLD = 5;
   private readonly RECONNECT_STATE_CACHE_KEY = 'wa:reconnect-state';
   private readonly TRANSIENT_RECONNECT_SUCCESS_ATTEMPT_LIMIT = 3;
   private readonly OPERATIONAL_ALERT_WINDOW_MS = 15 * 60 * 1000;
@@ -444,6 +445,54 @@ export class BaileysStartupService extends ChannelStartupService {
     };
   }
 
+  private isSessionFailure(closeCode?: number, message?: string) {
+    return (
+      closeCode === DisconnectReason.badSession ||
+      closeCode === DisconnectReason.connectionReplaced ||
+      closeCode === DisconnectReason.multideviceMismatch ||
+      /bad session|invalid session|device removed|conflict|logged out/i.test(message || '')
+    );
+  }
+
+  private async emitDegradedStatus(context: {
+    reason: string;
+    retryAttempt: number;
+    closeCode?: number;
+    category?: string;
+  }) {
+    this.stateConnection = {
+      state: 'degraded',
+      statusReason: context.closeCode ?? 503,
+    };
+
+    this.sendDataWebhook(Events.STATUS_INSTANCE, {
+      instance: this.instance.name,
+      status: 'degraded',
+      reason: context.reason,
+      retryAttempt: context.retryAttempt,
+      closeCode: context.closeCode,
+      category: context.category,
+      timestamp: new Date(),
+    });
+  }
+
+  public async resetSessionCredentials(reason = 'manual-admin-reset') {
+    this.logger.warn({
+      msg: 'session credential reset requested',
+      instance: this.instance.name,
+      reason,
+    });
+
+    await this.logoutInstance();
+
+    this.reconnectState = {
+      retryAttempt: 0,
+      consecutiveFailures: 0,
+      circuitOpenUntil: null,
+    };
+    await this.persistReconnectState();
+  }
+
   private async connectionUpdate({ qr, connection, lastDisconnect }: Partial<ConnectionState>) {
     await this.loadReconnectState();
 
@@ -571,6 +620,7 @@ export class BaileysStartupService extends ChannelStartupService {
         diagnostics.category === 'ws_close_remote' &&
         shouldReconnect &&
         currentRetryAttempt <= this.TRANSIENT_RECONNECT_SUCCESS_ATTEMPT_LIMIT;
+      const isSessionError = this.isSessionFailure(diagnosticsCloseCode, diagnostics.message);
       const errorLevel: 'warn' | 'error' = isTransientRemoteClose ? 'warn' : 'error';
 
       if (this.reconnectState.consecutiveFailures >= this.RECONNECT_CIRCUIT_FAILURE_LIMIT) {
@@ -636,6 +686,35 @@ export class BaileysStartupService extends ChannelStartupService {
           retryAttempt: currentRetryAttempt,
           stabilityWindow,
           threshold: `${this.OPERATIONAL_ALERT_THRESHOLD}/${this.STABILITY_WINDOW_LABEL}`,
+        });
+      }
+
+      if (this.reconnectState.consecutiveFailures >= this.SESSION_REFRESH_FAILURE_THRESHOLD && isSessionError) {
+        this.logger.warn({
+          msg: 'session failure threshold reached, refreshing credentials',
+          instance: this.instance.name,
+          retryAttempt: this.reconnectState.retryAttempt,
+          closeCode: diagnosticsCloseCode,
+          reason: diagnostics.reason,
+        });
+
+        await this.emitDegradedStatus({
+          reason: 'session_failure_threshold',
+          retryAttempt: this.reconnectState.retryAttempt,
+          closeCode: diagnosticsCloseCode,
+          category: diagnostics.category,
+        });
+        await this.resetSessionCredentials('automatic-session-refresh');
+        await this.connectToWhatsapp(this.phoneNumber);
+        return;
+      }
+
+      if (this.reconnectState.consecutiveFailures >= this.RECONNECT_CIRCUIT_FAILURE_LIMIT) {
+        await this.emitDegradedStatus({
+          reason: isSessionError ? 'session_failure_circuit_open' : 'transport_failure_circuit_open',
+          retryAttempt: this.reconnectState.retryAttempt,
+          closeCode: diagnosticsCloseCode,
+          category: diagnostics.category,
         });
       }
 
@@ -5242,6 +5321,16 @@ export class BaileysStartupService extends ChannelStartupService {
     const response = { me: this.client.authState.creds.me, account: this.client.authState.creds.account };
 
     return response;
+  }
+
+  public async baileysResetSession() {
+    await this.resetSessionCredentials('manual-admin-reset');
+    await this.connectToWhatsapp(this.phoneNumber);
+
+    return {
+      instance: this.instance.name,
+      status: 'reset_requested',
+    };
   }
 
   //Business Controller
