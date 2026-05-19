@@ -5,6 +5,13 @@ import dayjs from 'dayjs';
 
 const logger = new Logger('OnWhatsappCache');
 
+const ALLOWED_CACHE_DOMAINS = new Set(['s.whatsapp.net', 'lid', 'g.us']);
+
+function shouldSkipOnWhatsappCache(remoteJid: string): boolean {
+  const domain = remoteJid?.split('@')[1];
+  return !!domain && !ALLOWED_CACHE_DOMAINS.has(domain);
+}
+
 function getAvailableNumbers(remoteJid: string) {
   const numbersAvailable: string[] = [];
 
@@ -81,6 +88,11 @@ export async function saveOnWhatsappCache(data: ISaveOnWhatsappCacheParams[]) {
       const remoteJid = normalizeJid(item.remoteJid);
       if (!remoteJid) {
         logger.warn('[saveOnWhatsappCache] Item skipped, missing remoteJid.');
+        return;
+      }
+
+      if (shouldSkipOnWhatsappCache(remoteJid)) {
+        logger.verbose(`[saveOnWhatsappCache] Skipping unsupported jid domain: ${remoteJid}`);
         return;
       }
 
@@ -188,7 +200,13 @@ export async function getOnWhatsappCache(remoteJids: string[]) {
   }[] = [];
 
   if (configService.get<Database>('DATABASE').SAVE_DATA.IS_ON_WHATSAPP) {
-    const remoteJidsWithoutPlus = remoteJids.map((remoteJid) => getAvailableNumbers(remoteJid)).flat();
+    const filteredRemoteJids = remoteJids.filter((remoteJid) => !shouldSkipOnWhatsappCache(remoteJid));
+
+    if (filteredRemoteJids.length === 0) {
+      return results;
+    }
+
+    const remoteJidsWithoutPlus = filteredRemoteJids.map((remoteJid) => getAvailableNumbers(remoteJid)).flat();
 
     const onWhatsappCache = await prismaRepository.isOnWhatsapp.findMany({
       where: {
