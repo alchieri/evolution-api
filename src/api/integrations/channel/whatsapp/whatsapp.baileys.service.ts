@@ -176,6 +176,11 @@ interface ReconnectState {
   circuitOpenUntil: number | null;
 }
 
+interface ConnectionDropEvent {
+  timestamp: number;
+  category: string;
+}
+
 const groupMetadataCache = new CacheService(new CacheEngine(configService, 'groups').getEngine());
 
 // Adicione a função getVideoDuration no início do arquivo
@@ -280,6 +285,13 @@ export class BaileysStartupService extends ChannelStartupService {
   private readonly RECONNECT_CIRCUIT_FAILURE_LIMIT = 10;
   private readonly RECONNECT_CIRCUIT_BREAK_MS = 5 * 60 * 1000;
   private readonly RECONNECT_STATE_CACHE_KEY = 'wa:reconnect-state';
+  private readonly TRANSIENT_RECONNECT_SUCCESS_ATTEMPT_LIMIT = 3;
+  private readonly OPERATIONAL_ALERT_WINDOW_MS = 15 * 60 * 1000;
+  private readonly OPERATIONAL_ALERT_THRESHOLD = 6;
+  private readonly LOG_DEDUP_WINDOW_MS = 30 * 1000;
+  private readonly STABILITY_WINDOW_LABEL = '15m';
+  private connectionDropEvents: ConnectionDropEvent[] = [];
+  private recentErrorHashes = new Map<string, number>();
 
   // Cache TTL constants (in seconds)
   private readonly MESSAGE_CACHE_TTL_SECONDS = 5 * 60; // 5 minutes - avoid duplicate message processing
@@ -519,11 +531,21 @@ export class BaileysStartupService extends ChannelStartupService {
       }
 
       this.recoveryRetryAttempt += 1;
+      const currentRetryAttempt = this.recoveryRetryAttempt;
       this.reconnectState.retryAttempt = this.recoveryRetryAttempt;
       this.reconnectState.consecutiveFailures += 1;
+      this.recordConnectionDrop(diagnostics.category);
 
       const now = Date.now();
       const diagnosticsCloseCode = diagnostics.closeCode ?? statusCode;
+      const stabilityWindow = this.getStabilityWindow();
+      const repeatedDisconnects = stabilityWindow.drops;
+      const shouldRaiseOperationalAlert = repeatedDisconnects > this.OPERATIONAL_ALERT_THRESHOLD;
+      const isTransientRemoteClose =
+        diagnostics.category === 'ws_close_remote' &&
+        shouldReconnect &&
+        currentRetryAttempt <= this.TRANSIENT_RECONNECT_SUCCESS_ATTEMPT_LIMIT;
+      const errorLevel: 'warn' | 'error' = isTransientRemoteClose ? 'warn' : 'error';
 
       if (this.reconnectState.consecutiveFailures >= this.RECONNECT_CIRCUIT_FAILURE_LIMIT) {
         this.reconnectState.circuitOpenUntil = now + this.RECONNECT_CIRCUIT_BREAK_MS;
@@ -546,30 +568,47 @@ export class BaileysStartupService extends ChannelStartupService {
         });
       }
 
-      this.logger.error({
+      this.logConnectionIssue(errorLevel, {
         msg: 'connection errored',
         instance: this.instance.name,
         category: diagnostics.category,
         closeCode: statusCode,
         isReconnecting: shouldReconnect,
-        retryAttempt: this.recoveryRetryAttempt,
+        retryAttempt: currentRetryAttempt,
         uptimeBeforeDropMs,
         correlationId: this.activeRecoverySessionId,
         sessionId: this.activeRecoverySessionId,
         reason: diagnostics.reason,
         rawError: diagnostics.rawError,
+        stabilityWindow,
+        threshold: `${this.OPERATIONAL_ALERT_THRESHOLD}/${this.STABILITY_WINDOW_LABEL}`,
       });
       await this.persistReconnectState();
 
       if (diagnostics.category === 'ping_timeout') {
-        this.logger.error({
+        this.logConnectionIssue(errorLevel, {
           msg: 'error in sending keep alive',
           instance: this.instance.name,
           closeCode: statusCode,
           correlationId: this.activeRecoverySessionId,
           sessionId: this.activeRecoverySessionId,
-          retryAttempt: this.recoveryRetryAttempt,
+          retryAttempt: currentRetryAttempt,
           isReconnecting: shouldReconnect,
+          stabilityWindow,
+        });
+      }
+
+      if (shouldRaiseOperationalAlert) {
+        this.logger.error({
+          msg: 'operational alert: excessive reconnect drops',
+          instance: this.instance.name,
+          category: diagnostics.category,
+          closeCode: diagnosticsCloseCode,
+          correlationId: this.activeRecoverySessionId,
+          sessionId: this.activeRecoverySessionId,
+          retryAttempt: currentRetryAttempt,
+          stabilityWindow,
+          threshold: `${this.OPERATIONAL_ALERT_THRESHOLD}/${this.STABILITY_WINDOW_LABEL}`,
         });
       }
 
@@ -710,6 +749,54 @@ export class BaileysStartupService extends ChannelStartupService {
     if (connection === 'connecting') {
       this.sendDataWebhook(Events.CONNECTION_UPDATE, { instance: this.instance.name, ...this.stateConnection });
     }
+  }
+
+  private recordConnectionDrop(category: string) {
+    const now = Date.now();
+    this.connectionDropEvents.push({ timestamp: now, category });
+    this.connectionDropEvents = this.connectionDropEvents.filter(
+      (event) => now - event.timestamp <= this.OPERATIONAL_ALERT_WINDOW_MS,
+    );
+  }
+
+  private getStabilityWindow() {
+    const now = Date.now();
+    this.connectionDropEvents = this.connectionDropEvents.filter(
+      (event) => now - event.timestamp <= this.OPERATIONAL_ALERT_WINDOW_MS,
+    );
+    return {
+      window: this.STABILITY_WINDOW_LABEL,
+      drops: this.connectionDropEvents.length,
+    };
+  }
+
+  private buildLogHash(payload: Record<string, unknown>) {
+    const normalized = JSON.stringify(payload, (_key, value) => {
+      if (value instanceof Error) {
+        return { name: value.name, message: value.message, stack: value.stack };
+      }
+
+      return value;
+    });
+
+    return createHash('sha256').update(normalized).digest('hex');
+  }
+
+  private logConnectionIssue(level: 'warn' | 'error', payload: Record<string, unknown>) {
+    const now = Date.now();
+    for (const [hash, timestamp] of this.recentErrorHashes.entries()) {
+      if (now - timestamp > this.LOG_DEDUP_WINDOW_MS) {
+        this.recentErrorHashes.delete(hash);
+      }
+    }
+
+    const dedupHash = this.buildLogHash(payload);
+    if (this.recentErrorHashes.has(dedupHash)) {
+      return;
+    }
+
+    this.recentErrorHashes.set(dedupHash, now);
+    this.logger[level](payload);
   }
 
   private async getMessage(key: proto.IMessageKey, full = false) {
