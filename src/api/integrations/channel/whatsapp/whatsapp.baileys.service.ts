@@ -181,6 +181,21 @@ interface ConnectionDropEvent {
   category: string;
 }
 
+interface ConnectionMetricEvent {
+  timestamp: number;
+}
+
+interface ConnectionMetricsSnapshot {
+  wsUptimeMsBeforeDrop: number;
+  reconnectAttemptCount: number;
+  keepaliveFailCount: number;
+  timeToRecoverMs: number;
+  closeCodeCount: Record<string, number>;
+  reconnectRate5m: number;
+  reconnectRate15m: number;
+  reconnectRate60m: number;
+}
+
 const groupMetadataCache = new CacheService(new CacheEngine(configService, 'groups').getEngine());
 
 // Adicione a função getVideoDuration no início do arquivo
@@ -291,6 +306,12 @@ export class BaileysStartupService extends ChannelStartupService {
   private readonly LOG_DEDUP_WINDOW_MS = 30 * 1000;
   private readonly STABILITY_WINDOW_LABEL = '15m';
   private connectionDropEvents: ConnectionDropEvent[] = [];
+  private reconnectEvents: ConnectionMetricEvent[] = [];
+  private reconnectAttemptCount = 0;
+  private wsUptimeMsBeforeDrop = 0;
+  private keepaliveFailCount = 0;
+  private timeToRecoverMs = 0;
+  private closeCodeCount = new Map<string, number>();
   private recentErrorHashes = new Map<string, number>();
 
   // Cache TTL constants (in seconds)
@@ -523,6 +544,7 @@ export class BaileysStartupService extends ChannelStartupService {
       const shouldReconnect = !codesToNotReconnect.includes(statusCode);
       const diagnostics = this.classifyConnectionError(lastDisconnect);
       const uptimeBeforeDropMs = this.lastOpenAt ? Date.now() - this.lastOpenAt : null;
+      this.wsUptimeMsBeforeDrop = uptimeBeforeDropMs ?? 0;
 
       if (!this.activeRecoverySessionId) {
         this.activeRecoverySessionId = cuid();
@@ -531,13 +553,17 @@ export class BaileysStartupService extends ChannelStartupService {
       }
 
       this.recoveryRetryAttempt += 1;
+      this.reconnectAttemptCount += 1;
       const currentRetryAttempt = this.recoveryRetryAttempt;
       this.reconnectState.retryAttempt = this.recoveryRetryAttempt;
       this.reconnectState.consecutiveFailures += 1;
       this.recordConnectionDrop(diagnostics.category);
+      this.registerReconnectEvent();
 
       const now = Date.now();
       const diagnosticsCloseCode = diagnostics.closeCode ?? statusCode;
+      const closeCodeMetricLabel = `${diagnosticsCloseCode ?? 'unknown'}`;
+      this.closeCodeCount.set(closeCodeMetricLabel, (this.closeCodeCount.get(closeCodeMetricLabel) || 0) + 1);
       const stabilityWindow = this.getStabilityWindow();
       const repeatedDisconnects = stabilityWindow.drops;
       const shouldRaiseOperationalAlert = repeatedDisconnects > this.OPERATIONAL_ALERT_THRESHOLD;
@@ -586,6 +612,7 @@ export class BaileysStartupService extends ChannelStartupService {
       await this.persistReconnectState();
 
       if (diagnostics.category === 'ping_timeout') {
+        this.keepaliveFailCount += 1;
         this.logConnectionIssue(errorLevel, {
           msg: 'error in sending keep alive',
           instance: this.instance.name,
@@ -674,6 +701,10 @@ export class BaileysStartupService extends ChannelStartupService {
     }
 
     if (connection === 'open') {
+      const totalRecoveryMs =
+        this.activeRecoverySessionId && this.recoveryStartedAt ? Date.now() - this.recoveryStartedAt : 0;
+      this.timeToRecoverMs = totalRecoveryMs;
+
       if (this.activeRecoverySessionId && this.recoveryStartedAt) {
         this.logger.log({
           msg: 'connection recovery completed',
@@ -681,7 +712,17 @@ export class BaileysStartupService extends ChannelStartupService {
           correlationId: this.activeRecoverySessionId,
           sessionId: this.activeRecoverySessionId,
           retryAttempt: this.recoveryRetryAttempt,
-          totalRecoveryMs: Date.now() - this.recoveryStartedAt,
+          totalRecoveryMs,
+        });
+      }
+
+      const recoverySlaMs = this.configService.get('METRICS').RECOVERY_SLA_MS;
+      if (totalRecoveryMs > recoverySlaMs) {
+        this.logger.error({
+          msg: 'recovery SLA exceeded',
+          instance: this.instance.name,
+          timeToRecoverMs: totalRecoveryMs,
+          recoverySlaMs,
         });
       }
 
@@ -767,6 +808,31 @@ export class BaileysStartupService extends ChannelStartupService {
     return {
       window: this.STABILITY_WINDOW_LABEL,
       drops: this.connectionDropEvents.length,
+    };
+  }
+
+  private registerReconnectEvent() {
+    const now = Date.now();
+    this.reconnectEvents.push({ timestamp: now });
+    this.reconnectEvents = this.reconnectEvents.filter((event) => now - event.timestamp <= 60 * 60 * 1000);
+  }
+
+  private getReconnectRate(windowMs: number) {
+    const now = Date.now();
+    this.reconnectEvents = this.reconnectEvents.filter((event) => now - event.timestamp <= 60 * 60 * 1000);
+    return this.reconnectEvents.filter((event) => now - event.timestamp <= windowMs).length;
+  }
+
+  public getConnectionMetricsSnapshot(): ConnectionMetricsSnapshot {
+    return {
+      wsUptimeMsBeforeDrop: this.wsUptimeMsBeforeDrop,
+      reconnectAttemptCount: this.reconnectAttemptCount,
+      keepaliveFailCount: this.keepaliveFailCount,
+      timeToRecoverMs: this.timeToRecoverMs,
+      closeCodeCount: Object.fromEntries(this.closeCodeCount.entries()),
+      reconnectRate5m: this.getReconnectRate(5 * 60 * 1000),
+      reconnectRate15m: this.getReconnectRate(15 * 60 * 1000),
+      reconnectRate60m: this.getReconnectRate(60 * 60 * 1000),
     };
   }
 
