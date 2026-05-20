@@ -5,7 +5,7 @@ import { ChannelRouter } from '@api/integrations/channel/channel.router';
 import { ChatbotRouter } from '@api/integrations/chatbot/chatbot.router';
 import { EventRouter } from '@api/integrations/event/event.router';
 import { StorageRouter } from '@api/integrations/storage/storage.router';
-import { waMonitor } from '@api/server.module';
+import { manualRecoveryMetricsService, waMonitor } from '@api/server.module';
 import { configService, Database, Facebook } from '@config/env.config';
 import { fetchLatestWaWebVersion } from '@utils/fetchLatestWaWebVersion';
 import { NextFunction, Request, Response, Router } from 'express';
@@ -157,6 +157,24 @@ if (metricsConfig.ENABLED) {
           integration,
         )}",state="${escapeLabel(state)}"} 1`,
       );
+    }
+
+    const recoveryMetrics = await manualRecoveryMetricsService.getSnapshot();
+    lines.push('# HELP manual_recovery_requested_total Total manual recovery requests');
+    lines.push('# TYPE manual_recovery_requested_total counter');
+    lines.push('# HELP manual_recovery_success_total Total successful manual recoveries');
+    lines.push('# TYPE manual_recovery_success_total counter');
+    lines.push('# HELP manual_recovery_failure_total Total failed manual recoveries');
+    lines.push('# TYPE manual_recovery_failure_total counter');
+    lines.push('# HELP manual_recovery_duration_ms Manual recovery duration in milliseconds');
+    lines.push('# TYPE manual_recovery_duration_ms summary');
+
+    for (const layer of ['B', 'C'] as const) {
+      lines.push(`manual_recovery_requested_total{layer="${layer}"} ${recoveryMetrics.counters[layer].requested}`);
+      lines.push(`manual_recovery_success_total{layer="${layer}"} ${recoveryMetrics.counters[layer].success}`);
+      lines.push(`manual_recovery_failure_total{layer="${layer}"} ${recoveryMetrics.counters[layer].failure}`);
+      lines.push(`manual_recovery_duration_ms_sum{layer="${layer}"} ${recoveryMetrics.durationMsSum[layer]}`);
+      lines.push(`manual_recovery_duration_ms_count{layer="${layer}"} ${recoveryMetrics.durationMsCount[layer]}`);
     }
 
     res.send(lines.join('\n') + '\n');
