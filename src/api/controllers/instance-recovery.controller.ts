@@ -15,6 +15,9 @@ export class InstanceRecoveryController {
     });
   }
 
+  public async getRecoveryOperation(instance: InstanceDto, operationId: string) {
+    return this.instanceRecoveryService.getOperation(instance, operationId);
+  }
   private instanceRecoveryServiceContext: {
     waInstances: Record<string, unknown>;
     restartInstance: (instance: InstanceDto) => Promise<unknown>;

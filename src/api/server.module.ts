@@ -39,6 +39,7 @@ import { EventManager } from './integrations/event/event.manager';
 import { S3Controller } from './integrations/storage/s3/controllers/s3.controller';
 import { S3Service } from './integrations/storage/s3/services/s3.service';
 import { ProviderFiles } from './provider/sessions';
+import { OperationTraceRepository } from './repository/operation-trace.repository';
 import { PrismaRepository } from './repository/repository.service';
 import { CacheService } from './services/cache.service';
 import { InstanceRecoveryService } from './services/instance-recovery.service';
@@ -102,7 +103,8 @@ export const instanceController = new InstanceController(
   baileysCache,
   providerFiles,
 );
-const instanceRecoveryService = new InstanceRecoveryService(cache);
+const operationTraceRepository = new OperationTraceRepository(cache);
+const instanceRecoveryService = new InstanceRecoveryService(cache, operationTraceRepository);
 export const instanceRecoveryController = new InstanceRecoveryController(instanceRecoveryService);
 instanceRecoveryController.setContext({
   waInstances: waMonitor.waInstances,

@@ -1,8 +1,9 @@
 import { InstanceDto } from '@api/dto/instance.dto';
+import { OperationTrace, OperationTraceRepository } from '@api/repository/operation-trace.repository';
 import { CacheService } from '@api/services/cache.service';
 import { Logger } from '@config/logger.config';
 import { InstanceRecoveryDto } from '@dto/instance-recovery.dto';
-import { ConflictException, InternalServerErrorException, NotFoundException } from '@exceptions';
+import { ConflictException, NotFoundException } from '@exceptions';
 
 export type RecoveryStatus = 'accepted' | 'running' | 'completed' | 'failed';
 
@@ -37,7 +38,10 @@ export class InstanceRecoveryService {
   private readonly recoveryInProgress = new Map<string, RecoveryLockMetadata>();
   private readonly lockTtlSeconds = 15 * 60;
 
-  constructor(private readonly cacheService?: CacheService) {}
+  constructor(
+    private readonly cacheService?: CacheService,
+    private readonly operationTraceRepository?: OperationTraceRepository,
+  ) {}
 
   private createOperationId(instanceName: string, layer: 'B' | 'C') {
     return `${instanceName}:${layer}:${Date.now()}`;
@@ -111,6 +115,45 @@ export class InstanceRecoveryService {
       });
     }
 
+    const acceptedTrace: OperationTrace = {
+      operationId,
+      instanceName,
+      layer: payload.layer,
+      reason: payload.reason,
+      requestedBy: 'manual',
+      startedAt: lockMetadata.startedAt,
+      status: 'accepted',
+      result: 'Recovery accepted and queued',
+    };
+    await this.operationTraceRepository?.save(acceptedTrace);
+
+    void this.processRecovery(instanceName, payload, operationId, handlers);
+
+    return {
+      instanceName,
+      layer: payload.layer,
+      status: 'accepted',
+      operationId,
+    };
+  }
+
+  private async processRecovery(
+    instanceName: string,
+    payload: InstanceRecoveryDto,
+    operationId: string,
+    handlers: RecoveryHandlers,
+  ) {
+    const runningTrace: OperationTrace = {
+      operationId,
+      instanceName,
+      layer: payload.layer,
+      reason: payload.reason,
+      requestedBy: 'manual',
+      startedAt: new Date().toISOString(),
+      status: 'running',
+    };
+    await this.operationTraceRepository?.save(runningTrace);
+
     try {
       this.logger.info(
         `Starting recovery layer ${payload.layer} for instance ${instanceName} ` +
@@ -125,22 +168,35 @@ export class InstanceRecoveryService {
         await this.runLayerC({ instanceName }, handlers);
       }
 
+      await this.operationTraceRepository?.save({
+        ...runningTrace,
+        status: 'completed',
+        finishedAt: new Date().toISOString(),
+        result: 'Recovery completed successfully',
+      });
       this.logger.info(`Recovery finished for ${instanceName} operationId=${operationId}`);
     } catch (error) {
+      await this.operationTraceRepository?.save({
+        ...runningTrace,
+        status: 'failed',
+        finishedAt: new Date().toISOString(),
+        errorMessage: error?.toString?.() || 'Unknown error',
+      });
       this.logger.error(
         `Recovery failed for ${instanceName} operationId=${operationId}: ${error?.toString?.() || error}`,
       );
-      throw new InternalServerErrorException(`Recovery operation failed (${operationId})`, error);
     } finally {
       await this.releaseLock(instanceName);
     }
+  }
 
-    return {
-      instanceName,
-      layer: payload.layer,
-      status: 'completed',
-      operationId,
-    };
+  public async getOperation(instance: InstanceDto, operationId: string) {
+    const operation = await this.operationTraceRepository?.findByOperationId(operationId);
+    if (!operation || operation.instanceName !== instance.instanceName) {
+      throw new NotFoundException(`Operation ${operationId} not found for instance ${instance.instanceName}`);
+    }
+
+    return operation;
   }
 
   public async executeRecovery(instance: InstanceDto, data: InstanceRecoveryDto, handlers: RecoveryHandlers) {
