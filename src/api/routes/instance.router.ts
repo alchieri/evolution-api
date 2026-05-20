@@ -45,6 +45,16 @@ export class InstanceRouter extends RouterBroker {
 
         return res.status(HttpStatus.ACCEPTED).json(response);
       })
+      .get(this.routerPath('recovery/:operationId'), ...guards, async (req, res) => {
+        const response = await this.dataValidate<null>({
+          request: req,
+          schema: null,
+          ClassRef: InstanceDto,
+          execute: (instance) => instanceRecoveryController.getRecoveryOperation(instance, req.params.operationId),
+        });
+
+        return res.status(HttpStatus.OK).json(response);
+      })
       .get(this.routerPath('connect'), ...guards, async (req, res) => {
         const response = await this.dataValidate<InstanceDto>({
           request: req,
