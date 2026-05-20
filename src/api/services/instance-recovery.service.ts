@@ -14,6 +14,11 @@ export type RecoveryResponse = {
   operationId: string;
 };
 
+export type RecoveryOperationReadResponse = Pick<
+  OperationTrace,
+  'status' | 'layer' | 'startedAt' | 'finishedAt' | 'errorMessage'
+>;
+
 type RecoveryHandlers = {
   hasInstance: (instanceName: string) => boolean;
   closeTransientSocketAndListeners?: (instance: InstanceDto) => Promise<unknown>;
@@ -190,13 +195,22 @@ export class InstanceRecoveryService {
     }
   }
 
-  public async getOperation(instance: InstanceDto, operationId: string) {
-    const operation = await this.operationTraceRepository?.findByOperationId(operationId);
-    if (!operation || operation.instanceName !== instance.instanceName) {
+  public async getOperation(instance: InstanceDto, operationId: string): Promise<RecoveryOperationReadResponse> {
+    const operation = await this.operationTraceRepository?.findByOperationIdAndInstanceName(
+      operationId,
+      instance.instanceName,
+    );
+    if (!operation) {
       throw new NotFoundException(`Operation ${operationId} not found for instance ${instance.instanceName}`);
     }
 
-    return operation;
+    return {
+      status: operation.status,
+      layer: operation.layer,
+      startedAt: operation.startedAt,
+      finishedAt: operation.finishedAt,
+      errorMessage: operation.errorMessage,
+    };
   }
 
   public async executeRecovery(instance: InstanceDto, data: InstanceRecoveryDto, handlers: RecoveryHandlers) {
