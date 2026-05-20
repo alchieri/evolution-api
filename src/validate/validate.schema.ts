@@ -3,6 +3,7 @@ export * from './business.schema';
 export * from './chat.schema';
 export * from './group.schema';
 export * from './instance.schema';
+export * from './instance-recovery.schema';
 export * from './label.schema';
 export * from './message.schema';
 export * from './proxy.schema';
