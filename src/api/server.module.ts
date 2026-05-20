@@ -102,7 +102,7 @@ export const instanceController = new InstanceController(
   baileysCache,
   providerFiles,
 );
-const instanceRecoveryService = new InstanceRecoveryService();
+const instanceRecoveryService = new InstanceRecoveryService(cache);
 export const instanceRecoveryController = new InstanceRecoveryController(instanceRecoveryService);
 instanceRecoveryController.setContext({
   waInstances: waMonitor.waInstances,
