@@ -1,4 +1,5 @@
 import { InstanceDto } from '@api/dto/instance.dto';
+import { CacheService } from '@api/services/cache.service';
 import { Logger } from '@config/logger.config';
 import { InstanceRecoveryDto } from '@dto/instance-recovery.dto';
 import { ConflictException, InternalServerErrorException, NotFoundException } from '@exceptions';
@@ -23,12 +24,50 @@ type RecoveryHandlers = {
   connectToWhatsapp: (instance: InstanceDto) => Promise<unknown>;
 };
 
+type RecoveryLockMetadata = {
+  instanceName: string;
+  layer: 'B' | 'C';
+  operationId: string;
+  startedAt: string;
+  reason?: string;
+};
+
 export class InstanceRecoveryService {
   private readonly logger = new Logger('InstanceRecoveryService');
-  private readonly recoveryInProgress = new Set<string>();
+  private readonly recoveryInProgress = new Map<string, RecoveryLockMetadata>();
+  private readonly lockTtlSeconds = 15 * 60;
+
+  constructor(private readonly cacheService?: CacheService) {}
 
   private createOperationId(instanceName: string, layer: 'B' | 'C') {
     return `${instanceName}:${layer}:${Date.now()}`;
+  }
+
+  private createLockKey(instanceName: string) {
+    return `instance:recovery:lock:${instanceName}`;
+  }
+
+  private async acquireLock(instanceName: string, metadata: RecoveryLockMetadata) {
+    const currentInMemoryLock = this.recoveryInProgress.get(instanceName);
+    if (currentInMemoryLock) {
+      return currentInMemoryLock;
+    }
+
+    const lockKey = this.createLockKey(instanceName);
+    const currentCacheLock = (await this.cacheService?.get(lockKey)) as RecoveryLockMetadata | undefined;
+    if (currentCacheLock) {
+      this.recoveryInProgress.set(instanceName, currentCacheLock);
+      return currentCacheLock;
+    }
+
+    this.recoveryInProgress.set(instanceName, metadata);
+    await this.cacheService?.set(lockKey, metadata, this.lockTtlSeconds);
+    return null;
+  }
+
+  private async releaseLock(instanceName: string) {
+    this.recoveryInProgress.delete(instanceName);
+    await this.cacheService?.delete(this.createLockKey(instanceName));
   }
 
   public async runLayerB(instance: InstanceDto, handlers: RecoveryHandlers) {
@@ -57,12 +96,21 @@ export class InstanceRecoveryService {
 
     const operationId = this.createOperationId(instanceName, data.layer);
     const payload = { ...data, force: data.force ?? false };
-    const executionKey = `${instanceName}:${payload.layer}`;
-
-    if (this.recoveryInProgress.has(executionKey)) {
-      throw new ConflictException(`Recovery is already in progress for instance "${instanceName}"`);
+    const lockMetadata: RecoveryLockMetadata = {
+      instanceName,
+      layer: payload.layer,
+      operationId,
+      startedAt: new Date().toISOString(),
+      reason: payload.reason,
+    };
+    const currentLock = await this.acquireLock(instanceName, lockMetadata);
+    if (currentLock) {
+      throw new ConflictException({
+        message: `Recovery is already in progress for instance "${instanceName}"`,
+        operationInProgress: currentLock,
+      });
     }
-    this.recoveryInProgress.add(executionKey);
+
     try {
       this.logger.info(
         `Starting recovery layer ${payload.layer} for instance ${instanceName} ` +
@@ -84,7 +132,7 @@ export class InstanceRecoveryService {
       );
       throw new InternalServerErrorException(`Recovery operation failed (${operationId})`, error);
     } finally {
-      this.recoveryInProgress.delete(executionKey);
+      await this.releaseLock(instanceName);
     }
 
     return {
