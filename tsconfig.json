@@ -22,6 +22,7 @@
       "@api/*": ["./src/api/*"],
       "@cache/*": ["./src/cache/*"],
       "@config/*": ["./src/config/*"],
+      "@dto/*": ["./src/dto/*"],
       "@exceptions": ["./src/exceptions"],
       "@libs/*": ["./src/libs/*"],
       "@utils/*": ["./src/utils/*"],

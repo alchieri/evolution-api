@@ -1,11 +1,10 @@
 import { RouterBroker } from '@api/abstract/abstract.router';
-import { InstanceDto, InstanceRecoveryDto, SetPresenceDto } from '@api/dto/instance.dto';
+import { InstanceDto, SetPresenceDto } from '@api/dto/instance.dto';
 import { instanceController } from '@api/server.module';
 import { ConfigService } from '@config/env.config';
-import { UnprocessableEntityException } from '@exceptions';
+import { InstanceRecoveryDto } from '@dto/instance-recovery.dto';
 import { instanceRecoverySchema, instanceSchema, presenceOnlySchema } from '@validate/validate.schema';
 import { RequestHandler, Router } from 'express';
-import { validate } from 'jsonschema';
 
 import { HttpStatus } from './index.router';
 
@@ -37,20 +36,9 @@ export class InstanceRouter extends RouterBroker {
         return res.status(HttpStatus.OK).json(response);
       })
       .post(this.routerPath('recovery'), ...guards, async (req, res) => {
-        const payload = req.body as InstanceRecoveryDto;
-        payload.force = payload.force ?? false;
-
-        const validation = validate(payload, instanceRecoverySchema);
-        if (!validation.valid) {
-          const message = validation.errors.map(
-            ({ stack, schema }) => schema['description'] || stack.replace('instance.', ''),
-          );
-          throw new UnprocessableEntityException(message);
-        }
-
         const response = await this.dataValidate<InstanceRecoveryDto>({
           request: req,
-          schema: null,
+          schema: instanceRecoverySchema,
           ClassRef: InstanceRecoveryDto,
           execute: (instance, data) => instanceController.triggerRecovery(instance, data),
         });
