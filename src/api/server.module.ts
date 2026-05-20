@@ -8,6 +8,7 @@ import { CallController } from './controllers/call.controller';
 import { ChatController } from './controllers/chat.controller';
 import { GroupController } from './controllers/group.controller';
 import { InstanceController } from './controllers/instance.controller';
+import { InstanceRecoveryController } from './controllers/instance-recovery.controller';
 import { LabelController } from './controllers/label.controller';
 import { ProxyController } from './controllers/proxy.controller';
 import { SendMessageController } from './controllers/sendMessage.controller';
@@ -40,6 +41,7 @@ import { S3Service } from './integrations/storage/s3/services/s3.service';
 import { ProviderFiles } from './provider/sessions';
 import { PrismaRepository } from './repository/repository.service';
 import { CacheService } from './services/cache.service';
+import { InstanceRecoveryService } from './services/instance-recovery.service';
 import { WAMonitoringService } from './services/monitor.service';
 import { ProxyService } from './services/proxy.service';
 import { SettingsService } from './services/settings.service';
@@ -100,6 +102,14 @@ export const instanceController = new InstanceController(
   baileysCache,
   providerFiles,
 );
+const instanceRecoveryService = new InstanceRecoveryService();
+export const instanceRecoveryController = new InstanceRecoveryController(instanceRecoveryService);
+instanceRecoveryController.setContext({
+  waInstances: waMonitor.waInstances,
+  restartInstance: (instance) => instanceController.restartInstance(instance),
+  logout: (instance) => instanceController.logout(instance),
+  connectToWhatsapp: (instance) => instanceController.connectToWhatsapp(instance),
+});
 export const sendMessageController = new SendMessageController(waMonitor);
 export const callController = new CallController(waMonitor);
 export const chatController = new ChatController(waMonitor);

@@ -9,13 +9,7 @@ import { SettingsService } from '@api/services/settings.service';
 import { Events, Integration, wa } from '@api/types/wa.types';
 import { Auth, Chatwoot, ConfigService, HttpServer, WaBusiness } from '@config/env.config';
 import { Logger } from '@config/logger.config';
-import {
-  BadRequestException,
-  ConflictException,
-  InternalServerErrorException,
-  NotFoundException,
-  UnauthorizedException,
-} from '@exceptions';
+import { BadRequestException, InternalServerErrorException, UnauthorizedException } from '@exceptions';
 import { delay } from 'baileys';
 import { isArray, isURL } from 'class-validator';
 import EventEmitter2 from 'eventemitter2';
@@ -39,7 +33,6 @@ export class InstanceController {
   ) {}
 
   private readonly logger = new Logger('InstanceController');
-  private readonly recoveryInProgress = new Set<string>();
 
   public async createInstance(instanceData: InstanceDto) {
     try {
@@ -480,56 +473,5 @@ export class InstanceController {
     } catch (error) {
       throw new BadRequestException(error.toString());
     }
-  }
-
-  public async triggerRecovery(
-    { instanceName }: InstanceDto,
-    data: { layer: 'B' | 'C'; reason: string; force?: boolean },
-  ) {
-    const instance = this.waMonitor.waInstances[instanceName];
-    if (!instance) {
-      throw new NotFoundException(`The "${instanceName}" instance does not exist`);
-    }
-
-    if (this.recoveryInProgress.has(instanceName)) {
-      throw new ConflictException(`Recovery is already in progress for instance "${instanceName}"`);
-    }
-
-    const payload = { ...data, force: data.force ?? false };
-    this.recoveryInProgress.add(instanceName);
-
-    void (async () => {
-      try {
-        this.logger.info(
-          `Starting recovery layer ${payload.layer} for instance ${instanceName} (force=${payload.force}) reason=${payload.reason}`,
-        );
-
-        if (payload.layer === 'B') {
-          await this.restartInstance({ instanceName });
-          return;
-        }
-
-        await this.logout({ instanceName });
-        await this.connectToWhatsapp({ instanceName });
-      } catch (error) {
-        this.logger.error(`Recovery failed for ${instanceName}: ${error?.toString?.() || error}`);
-      } finally {
-        this.recoveryInProgress.delete(instanceName);
-      }
-    })();
-
-    return {
-      status: 'ACCEPTED',
-      recovery: {
-        instanceName,
-        layer: payload.layer,
-        reason: payload.reason,
-        force: payload.force,
-        semantics: {
-          B: 'Hard reconnect without session invalidation',
-          C: 'Session recycle with logout and re-authentication',
-        },
-      },
-    };
   }
 }
