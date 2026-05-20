@@ -73,6 +73,129 @@ Evolution API supports various integrations to enhance its functionality. Below 
 - Amazon S3 / Minio:
   - Store media files received in [Amazon S3](https://aws.amazon.com/pt/s3/) or [Minio](https://min.io/).
 
+## Manual Recovery Endpoint (Layer B / Layer C)
+
+This section is intended for API clients that consume manual recovery operations.
+
+### Endpoint summary
+
+- `POST /instance/recovery/:instanceName` starts a manual recovery operation.
+- `GET /instance/recovery/:operationId/:instanceName` returns operation status.
+- The recovery flow is **asynchronous**:
+  - `POST` returns `202 Accepted` with `operationId`.
+  - The actual execution continues in background and must be tracked via `GET` status endpoint.
+
+### Operational impact by layer
+
+- **Layer B (hard reconnect, no session reset)**:
+  - Forces reconnect/restart flow without recycling credentials/session.
+  - Lower disruption profile when session is healthy but transport/socket is unstable.
+- **Layer C (session recycle)**:
+  - Performs logout + credential/session recycle + new connect attempt.
+  - May require a **new QR code scan** depending on provider/account state.
+  - Requires explicit confirmation header: `x-recovery-confirmation: true` (or `CONFIRM_LAYER_C`).
+
+### Request examples
+
+#### Layer B request
+
+```bash
+curl --request POST \
+  --url http://localhost:8080/instance/recovery/my-instance \
+  --header 'Content-Type: application/json' \
+  --header 'apikey: <YOUR_API_KEY>' \
+  --data '{
+    "layer": "B",
+    "reason": "Transport reconnect after repeated socket instability",
+    "force": false
+  }'
+```
+
+#### Layer B response (`202 Accepted`)
+
+```json
+{
+  "instanceName": "my-instance",
+  "layer": "B",
+  "status": "accepted",
+  "operationId": "my-instance:B:1715800000000"
+}
+```
+
+#### Layer C request
+
+```bash
+curl --request POST \
+  --url http://localhost:8080/instance/recovery/my-instance \
+  --header 'Content-Type: application/json' \
+  --header 'apikey: <YOUR_API_KEY>' \
+  --header 'x-recovery-confirmation: true' \
+  --data '{
+    "layer": "C",
+    "reason": "Credential/session recycle after persistent auth inconsistency",
+    "force": true
+  }'
+```
+
+#### Layer C response (`202 Accepted`)
+
+```json
+{
+  "instanceName": "my-instance",
+  "layer": "C",
+  "status": "accepted",
+  "operationId": "my-instance:C:1715800001000"
+}
+```
+
+### Status tracking (mandatory)
+
+Use the `operationId` from `POST` response:
+
+```bash
+curl --request GET \
+  --url http://localhost:8080/instance/recovery/my-instance:C:1715800001000/my-instance \
+  --header 'apikey: <YOUR_API_KEY>'
+```
+
+Example status response:
+
+```json
+{
+  "status": "running",
+  "layer": "C",
+  "startedAt": "2026-05-20T10:30:00.000Z",
+  "finishedAt": null,
+  "errorMessage": null
+}
+```
+
+Possible values for `status`: `accepted`, `running`, `completed`, `failed`.
+
+### When to use each layer
+
+- Prefer **Layer B** first when:
+  - Instance is known and exists.
+  - You need fast reconnect with minimal user impact.
+  - There are transient connection issues without evidence of credential corruption.
+- Use **Layer C** when:
+  - Layer B did not restore stability.
+  - There are persistent auth/session inconsistencies.
+  - You are operationally ready for possible QR re-authentication.
+
+### Common errors and how to act
+
+- **`409 Conflict`**: another recovery is already in progress for the same instance.
+  - Action: read the `operationInProgress` payload and poll status endpoint until completion.
+  - Then decide whether a new operation is still needed.
+- **`422 Unprocessable Entity`**: semantic payload issue (for example integration/client contract mismatch).
+  - Action: validate `layer` (`B` or `C`), `reason` length/format, and required confirmation for Layer C.
+  - Re-send request only after fixing payload semantics.
+- **`404 Not Found`**:
+  - Instance not found on `POST` recovery.
+  - `operationId` not found for given instance on `GET` status.
+  - Action: confirm `instanceName`, keep strict mapping between operation and instance, and retry with correct identifiers.
+
 ## Community & Feedback
 
 We value community input and feedback to continuously improve Evolution API:
