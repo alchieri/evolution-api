@@ -3,6 +3,7 @@ import { InstanceDto, SetPresenceDto } from '@api/dto/instance.dto';
 import { instanceController, instanceRecoveryController } from '@api/server.module';
 import { ConfigService } from '@config/env.config';
 import { InstanceRecoveryDto } from '@dto/instance-recovery.dto';
+import { BadRequestException, ForbiddenException } from '@exceptions';
 import { instanceRecoverySchema, instanceSchema, presenceOnlySchema } from '@validate/validate.schema';
 import { RequestHandler, Router } from 'express';
 
@@ -40,7 +41,29 @@ export class InstanceRouter extends RouterBroker {
           request: req,
           schema: instanceRecoverySchema,
           ClassRef: InstanceRecoveryDto,
-          execute: (instance, data) => instanceRecoveryController.executeRecovery(instance, data),
+          execute: (instance, data) => {
+            if (req.authInfo?.scope === 'instance' && req.authInfo.instanceName !== instance.instanceName) {
+              throw new ForbiddenException('API key scope does not match target instance');
+            }
+
+            const confirmationHeader = req.get('x-recovery-confirmation');
+            const requiresConfirmation = data.layer === 'C';
+            const confirmationAccepted =
+              !requiresConfirmation || confirmationHeader === 'CONFIRM_LAYER_C' || confirmationHeader === 'true';
+
+            if (requiresConfirmation && !confirmationAccepted) {
+              throw new BadRequestException(
+                'Layer C operation requires confirmation header',
+                'Set header x-recovery-confirmation=true (or CONFIRM_LAYER_C) to continue',
+              );
+            }
+
+            return instanceRecoveryController.executeRecovery(instance, {
+              ...data,
+              requestedBy: req.authInfo?.requestedBy || 'unknown-apikey',
+              confirmationAccepted,
+            });
+          },
         });
 
         return res.status(HttpStatus.ACCEPTED).json(response);

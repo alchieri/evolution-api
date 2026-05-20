@@ -17,6 +17,10 @@ async function apikey(req: Request, _: Response, next: NextFunction) {
   }
 
   if (env.KEY === key) {
+    req.authInfo = {
+      requestedBy: 'global-apikey',
+      scope: 'global',
+    };
     return next();
   }
 
@@ -31,6 +35,11 @@ async function apikey(req: Request, _: Response, next: NextFunction) {
         where: { name: param.instanceName },
       });
       if (instance.token === key) {
+        req.authInfo = {
+          requestedBy: `instance-apikey:${instance.name}`,
+          scope: 'instance',
+          instanceName: instance.name,
+        };
         return next();
       }
     } else {
@@ -39,6 +48,11 @@ async function apikey(req: Request, _: Response, next: NextFunction) {
           where: { token: key },
         });
         if (instanceByKey) {
+          req.authInfo = {
+            requestedBy: `instance-apikey:${instanceByKey.name}`,
+            scope: 'instance',
+            instanceName: instanceByKey.name,
+          };
           return next();
         }
       }

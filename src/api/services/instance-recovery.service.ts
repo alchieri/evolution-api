@@ -3,7 +3,7 @@ import { OperationTrace, OperationTraceRepository } from '@api/repository/operat
 import { CacheService } from '@api/services/cache.service';
 import { Logger } from '@config/logger.config';
 import { InstanceRecoveryDto } from '@dto/instance-recovery.dto';
-import { ConflictException, NotFoundException } from '@exceptions';
+import { BadRequestException, ConflictException, NotFoundException } from '@exceptions';
 
 export type RecoveryStatus = 'accepted' | 'running' | 'completed' | 'failed';
 
@@ -103,8 +103,16 @@ export class InstanceRecoveryService {
       throw new NotFoundException(`The "${instanceName}" instance does not exist`);
     }
 
+    if (!data.reason?.trim()) {
+      throw new BadRequestException('The "reason" field is required');
+    }
+
+    if (data.layer === 'C' && !data.confirmationAccepted) {
+      throw new BadRequestException('Layer C confirmation is required');
+    }
+
     const operationId = this.createOperationId(instanceName, data.layer);
-    const payload = { ...data, force: data.force ?? false };
+    const payload = { ...data, force: data.force ?? false, requestedBy: data.requestedBy || 'manual-apikey' };
     const lockMetadata: RecoveryLockMetadata = {
       instanceName,
       layer: payload.layer,
@@ -125,7 +133,7 @@ export class InstanceRecoveryService {
       instanceName,
       layer: payload.layer,
       reason: payload.reason,
-      requestedBy: 'manual',
+      requestedBy: payload.requestedBy,
       startedAt: lockMetadata.startedAt,
       status: 'accepted',
       result: 'Recovery accepted and queued',
@@ -153,7 +161,7 @@ export class InstanceRecoveryService {
       instanceName,
       layer: payload.layer,
       reason: payload.reason,
-      requestedBy: 'manual',
+      requestedBy: payload.requestedBy,
       startedAt: new Date().toISOString(),
       status: 'running',
     };
