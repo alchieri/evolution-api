@@ -57,3 +57,9 @@ export class InstanceDto extends IntegrationDto {
 export class SetPresenceDto {
   presence: WAPresence;
 }
+
+export class InstanceRecoveryDto {
+  layer: 'B' | 'C';
+  reason: string;
+  force?: boolean;
+}
