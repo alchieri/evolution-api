@@ -45,4 +45,16 @@ export class OperationTraceRepository {
     this.inMemoryStore.set(operationId, cacheValue);
     return cacheValue;
   }
+
+  public async findByOperationIdAndInstanceName(
+    operationId: string,
+    instanceName: string,
+  ): Promise<OperationTrace | null> {
+    const operation = await this.findByOperationId(operationId);
+    if (!operation || operation.instanceName !== instanceName) {
+      return null;
+    }
+
+    return operation;
+  }
 }
