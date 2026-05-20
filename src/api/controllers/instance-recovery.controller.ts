@@ -7,7 +7,7 @@ export class InstanceRecoveryController {
   constructor(private readonly instanceRecoveryService: InstanceRecoveryService) {}
 
   public async executeRecovery(instance: InstanceDto, data: InstanceRecoveryDto): Promise<RecoveryResponse> {
-    return this.instanceRecoveryService.executeRecovery(instance, data, {
+    return this.instanceRecoveryService.executeManualRecovery(instance, data, {
       hasInstance: (instanceName) => Boolean(this.instanceRecoveryServiceContext.waInstances[instanceName]),
       restartInstance: (instanceDto) => this.instanceRecoveryServiceContext.restartInstance(instanceDto),
       logout: (instanceDto) => this.instanceRecoveryServiceContext.logout(instanceDto),
