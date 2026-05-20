@@ -1,6 +1,6 @@
 import { RouterBroker } from '@api/abstract/abstract.router';
 import { InstanceDto, SetPresenceDto } from '@api/dto/instance.dto';
-import { instanceController } from '@api/server.module';
+import { instanceController, instanceRecoveryController } from '@api/server.module';
 import { ConfigService } from '@config/env.config';
 import { InstanceRecoveryDto } from '@dto/instance-recovery.dto';
 import { instanceRecoverySchema, instanceSchema, presenceOnlySchema } from '@validate/validate.schema';
@@ -40,7 +40,7 @@ export class InstanceRouter extends RouterBroker {
           request: req,
           schema: instanceRecoverySchema,
           ClassRef: InstanceRecoveryDto,
-          execute: (instance, data) => instanceController.triggerRecovery(instance, data),
+          execute: (instance, data) => instanceRecoveryController.executeRecovery(instance, data),
         });
 
         return res.status(HttpStatus.ACCEPTED).json(response);
