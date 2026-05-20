@@ -43,6 +43,7 @@ import { OperationTraceRepository } from './repository/operation-trace.repositor
 import { PrismaRepository } from './repository/repository.service';
 import { CacheService } from './services/cache.service';
 import { InstanceRecoveryService } from './services/instance-recovery.service';
+import { ManualRecoveryMetricsService } from './services/manual-recovery-metrics.service';
 import { WAMonitoringService } from './services/monitor.service';
 import { ProxyService } from './services/proxy.service';
 import { SettingsService } from './services/settings.service';
@@ -104,7 +105,12 @@ export const instanceController = new InstanceController(
   providerFiles,
 );
 const operationTraceRepository = new OperationTraceRepository(cache);
-const instanceRecoveryService = new InstanceRecoveryService(cache, operationTraceRepository);
+export const manualRecoveryMetricsService = new ManualRecoveryMetricsService(cache);
+const instanceRecoveryService = new InstanceRecoveryService(
+  cache,
+  operationTraceRepository,
+  manualRecoveryMetricsService,
+);
 export const instanceRecoveryController = new InstanceRecoveryController(instanceRecoveryService);
 instanceRecoveryController.setContext({
   waInstances: waMonitor.waInstances,

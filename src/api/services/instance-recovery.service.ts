@@ -1,6 +1,7 @@
 import { InstanceDto } from '@api/dto/instance.dto';
 import { OperationTrace, OperationTraceRepository } from '@api/repository/operation-trace.repository';
 import { CacheService } from '@api/services/cache.service';
+import { ManualRecoveryMetricsService } from '@api/services/manual-recovery-metrics.service';
 import { Logger } from '@config/logger.config';
 import { InstanceRecoveryDto } from '@dto/instance-recovery.dto';
 import { BadRequestException, ConflictException, NotFoundException } from '@exceptions';
@@ -46,7 +47,43 @@ export class InstanceRecoveryService {
   constructor(
     private readonly cacheService?: CacheService,
     private readonly operationTraceRepository?: OperationTraceRepository,
+    private readonly manualRecoveryMetricsService?: ManualRecoveryMetricsService,
   ) {}
+
+  private sanitizeProviderError(error: unknown) {
+    const redactedKeys = ['token', 'secret', 'session', 'password', 'authorization', 'cookie', 'apikey', 'qr'];
+    const hideSensitive = (value: unknown): unknown => {
+      if (!value || typeof value !== 'object') {
+        return value;
+      }
+
+      if (Array.isArray(value)) {
+        return value.slice(0, 10).map((item) => hideSensitive(item));
+      }
+
+      const output: Record<string, unknown> = {};
+      for (const [key, nestedValue] of Object.entries(value as Record<string, unknown>)) {
+        const keyLower = key.toLowerCase();
+        if (redactedKeys.some((sensitiveKey) => keyLower.includes(sensitiveKey))) {
+          output[key] = '[REDACTED]';
+          continue;
+        }
+        output[key] = hideSensitive(nestedValue);
+      }
+      return output;
+    };
+
+    if (error instanceof Error) {
+      return {
+        name: error.name,
+        message: error.message,
+        stack: error.stack,
+        cause: hideSensitive(error.cause),
+      };
+    }
+
+    return hideSensitive(error);
+  }
 
   private createOperationId(instanceName: string, layer: 'B' | 'C') {
     return `${instanceName}:${layer}:${Date.now()}`;
@@ -139,6 +176,7 @@ export class InstanceRecoveryService {
       result: 'Recovery accepted and queued',
     };
     await this.operationTraceRepository?.save(acceptedTrace);
+    await this.manualRecoveryMetricsService?.incrementCounter(payload.layer, 'requested');
 
     void this.processRecovery(instanceName, payload, operationId, handlers);
 
@@ -156,6 +194,7 @@ export class InstanceRecoveryService {
     operationId: string,
     handlers: RecoveryHandlers,
   ) {
+    const startedAtMs = Date.now();
     const runningTrace: OperationTrace = {
       operationId,
       instanceName,
@@ -168,10 +207,16 @@ export class InstanceRecoveryService {
     await this.operationTraceRepository?.save(runningTrace);
 
     try {
-      this.logger.info(
-        `Starting recovery layer ${payload.layer} for instance ${instanceName} ` +
-          `(force=${payload.force}) reason=${payload.reason} operationId=${operationId}`,
-      );
+      this.logger.info({
+        msg: 'manual recovery started',
+        instanceName,
+        operationId,
+        layer: payload.layer,
+        reason: payload.reason,
+        requestedBy: payload.requestedBy,
+        durationMs: 0,
+        result: 'running',
+      });
 
       if (payload.layer === 'B') {
         await this.runLayerB({ instanceName }, handlers);
@@ -187,7 +232,19 @@ export class InstanceRecoveryService {
         finishedAt: new Date().toISOString(),
         result: 'Recovery completed successfully',
       });
-      this.logger.info(`Recovery finished for ${instanceName} operationId=${operationId}`);
+      const durationMs = Date.now() - startedAtMs;
+      await this.manualRecoveryMetricsService?.incrementCounter(payload.layer, 'success');
+      await this.manualRecoveryMetricsService?.observeDuration(payload.layer, durationMs);
+      this.logger.info({
+        msg: 'manual recovery finished',
+        instanceName,
+        operationId,
+        layer: payload.layer,
+        reason: payload.reason,
+        requestedBy: payload.requestedBy,
+        durationMs,
+        result: 'success',
+      });
     } catch (error) {
       await this.operationTraceRepository?.save({
         ...runningTrace,
@@ -195,9 +252,20 @@ export class InstanceRecoveryService {
         finishedAt: new Date().toISOString(),
         errorMessage: error?.toString?.() || 'Unknown error',
       });
-      this.logger.error(
-        `Recovery failed for ${instanceName} operationId=${operationId}: ${error?.toString?.() || error}`,
-      );
+      const durationMs = Date.now() - startedAtMs;
+      await this.manualRecoveryMetricsService?.incrementCounter(payload.layer, 'failure');
+      await this.manualRecoveryMetricsService?.observeDuration(payload.layer, durationMs);
+      this.logger.error({
+        msg: 'manual recovery failed',
+        instanceName,
+        operationId,
+        layer: payload.layer,
+        reason: payload.reason,
+        requestedBy: payload.requestedBy,
+        durationMs,
+        result: 'failure',
+        providerError: this.sanitizeProviderError(error),
+      });
     } finally {
       await this.releaseLock(instanceName);
     }
