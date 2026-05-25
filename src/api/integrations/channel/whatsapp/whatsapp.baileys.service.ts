@@ -1175,6 +1175,15 @@ export class BaileysStartupService extends ChannelStartupService {
       settings: any,
     ) => {
       try {
+        this.logger.log({
+          local: 'BaileysService.messages.upsert',
+          action: 'received_batch',
+          instanceName: this.instance.name,
+          upsertType: type,
+          messageCount: messages?.length || 0,
+          requestId: requestId || null,
+        });
+
         for (const received of messages) {
           if (
             received?.messageStubParameters?.some?.((param) =>
@@ -1254,7 +1263,42 @@ export class BaileysStartupService extends ChannelStartupService {
             }
           }
 
-          if ((type !== 'notify' && type !== 'append') || editedMessage || !received?.message) {
+          if (type !== 'notify' && type !== 'append') {
+            this.logger.debug({
+              local: 'BaileysService.messages.upsert',
+              action: 'skip_message',
+              reason: 'unsupported_upsert_type',
+              instanceName: this.instance.name,
+              upsertType: type,
+              messageId: received?.key?.id,
+              remoteJid: received?.key?.remoteJid,
+            });
+            continue;
+          }
+
+          if (editedMessage) {
+            this.logger.debug({
+              local: 'BaileysService.messages.upsert',
+              action: 'skip_message',
+              reason: 'edited_message_path',
+              instanceName: this.instance.name,
+              messageId: received?.key?.id,
+              remoteJid: received?.key?.remoteJid,
+            });
+            continue;
+          }
+
+          if (!received?.message) {
+            this.logger.warn({
+              local: 'BaileysService.messages.upsert',
+              action: 'skip_message',
+              reason: 'missing_message_payload',
+              instanceName: this.instance.name,
+              upsertType: type,
+              messageId: received?.key?.id,
+              remoteJid: received?.key?.remoteJid,
+              hasMessageStubParameters: Boolean(received?.messageStubParameters?.length),
+            });
             continue;
           }
 
