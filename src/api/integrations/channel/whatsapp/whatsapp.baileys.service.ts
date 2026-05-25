@@ -1480,8 +1480,7 @@ export class BaileysStartupService extends ChannelStartupService {
                 try {
                   if (isVideo && !this.configService.get<S3>('S3').SAVE_VIDEO) {
                     this.logger.warn('Video upload is disabled. Skipping video upload.');
-                    // Skip video upload by returning early from this block
-                    return;
+                    // Skip only media upload, keep webhook + message pipeline
                   }
 
                   const message: any = received;
@@ -1496,34 +1495,33 @@ export class BaileysStartupService extends ChannelStartupService {
 
                     if (!media) {
                       this.logger.verbose('No valid media to upload (messageContextInfo only), skipping MinIO');
-                      return;
+                    } else {
+                      const { buffer, mediaType, fileName, size } = media;
+                      const mimetype = mimeTypes.lookup(fileName).toString();
+                      const fullName = join(
+                        `${this.instance.id}`,
+                        received.key.remoteJid,
+                        mediaType,
+                        `${Date.now()}_${fileName}`,
+                      );
+                      await s3Service.uploadFile(fullName, buffer, size.fileLength?.low, { 'Content-Type': mimetype });
+
+                      await this.prismaRepository.media.create({
+                        data: {
+                          messageId: msg.id,
+                          instanceId: this.instanceId,
+                          type: mediaType,
+                          fileName: fullName,
+                          mimetype,
+                        },
+                      });
+
+                      const mediaUrl = await s3Service.getObjectUrl(fullName);
+
+                      messageRaw.message.mediaUrl = mediaUrl;
+
+                      await this.prismaRepository.message.update({ where: { id: msg.id }, data: messageRaw });
                     }
-
-                    const { buffer, mediaType, fileName, size } = media;
-                    const mimetype = mimeTypes.lookup(fileName).toString();
-                    const fullName = join(
-                      `${this.instance.id}`,
-                      received.key.remoteJid,
-                      mediaType,
-                      `${Date.now()}_${fileName}`,
-                    );
-                    await s3Service.uploadFile(fullName, buffer, size.fileLength?.low, { 'Content-Type': mimetype });
-
-                    await this.prismaRepository.media.create({
-                      data: {
-                        messageId: msg.id,
-                        instanceId: this.instanceId,
-                        type: mediaType,
-                        fileName: fullName,
-                        mimetype,
-                      },
-                    });
-
-                    const mediaUrl = await s3Service.getObjectUrl(fullName);
-
-                    messageRaw.message.mediaUrl = mediaUrl;
-
-                    await this.prismaRepository.message.update({ where: { id: msg.id }, data: messageRaw });
                   }
                 } catch (error) {
                   this.logger.error(['Error on upload file to minio', error?.message, error?.stack]);
@@ -1571,7 +1569,20 @@ export class BaileysStartupService extends ChannelStartupService {
           }
           console.log(messageRaw);
 
-          this.sendDataWebhook(Events.MESSAGES_UPSERT, messageRaw);
+          this.logger.debug({
+            local: 'BaileysService.messages.upsert',
+            action: 'dispatch_webhook',
+            event: Events.MESSAGES_UPSERT,
+            instanceName: this.instance.name,
+            messageId: messageRaw?.key?.id,
+            remoteJid: messageRaw?.key?.remoteJid,
+            messageType: messageRaw?.messageType,
+          });
+          this.logger.log(
+            `[messages.upsert] dispatch webhook | instance=${this.instance.name} | messageId=${messageRaw?.key?.id} | remoteJid=${messageRaw?.key?.remoteJid}`,
+          );
+
+          await this.sendDataWebhook(Events.MESSAGES_UPSERT, messageRaw);
 
           await chatbotController.emit({
             instance: { instanceName: this.instance.name, instanceId: this.instanceId },
