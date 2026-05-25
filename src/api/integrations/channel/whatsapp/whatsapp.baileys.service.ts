@@ -1480,8 +1480,8 @@ export class BaileysStartupService extends ChannelStartupService {
                 try {
                   if (isVideo && !this.configService.get<S3>('S3').SAVE_VIDEO) {
                     this.logger.warn('Video upload is disabled. Skipping video upload.');
-                    // Skip video upload by returning early from this block
-                    return;
+                    // Skip only media upload, keep webhook + message pipeline
+                    continue;
                   }
 
                   const message: any = received;
@@ -1496,7 +1496,7 @@ export class BaileysStartupService extends ChannelStartupService {
 
                     if (!media) {
                       this.logger.verbose('No valid media to upload (messageContextInfo only), skipping MinIO');
-                      return;
+                      continue;
                     }
 
                     const { buffer, mediaType, fileName, size } = media;
@@ -1571,7 +1571,17 @@ export class BaileysStartupService extends ChannelStartupService {
           }
           console.log(messageRaw);
 
-          this.sendDataWebhook(Events.MESSAGES_UPSERT, messageRaw);
+          this.logger.debug({
+            local: 'BaileysService.messages.upsert',
+            action: 'dispatch_webhook',
+            event: Events.MESSAGES_UPSERT,
+            instanceName: this.instance.name,
+            messageId: messageRaw?.key?.id,
+            remoteJid: messageRaw?.key?.remoteJid,
+            messageType: messageRaw?.messageType,
+          });
+
+          await this.sendDataWebhook(Events.MESSAGES_UPSERT, messageRaw);
 
           await chatbotController.emit({
             instance: { instanceName: this.instance.name, instanceId: this.instanceId },
