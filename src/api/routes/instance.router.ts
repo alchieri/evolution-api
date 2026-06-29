@@ -21,7 +21,7 @@ export class InstanceRouter extends RouterBroker {
           request: req,
           schema: instanceSchema,
           ClassRef: InstanceDto,
-          execute: (instance) => instanceController.createInstance(instance),
+          execute: (_, data) => instanceController.createInstance(data),
         });
 
         return res.status(HttpStatus.CREATED).json(response);

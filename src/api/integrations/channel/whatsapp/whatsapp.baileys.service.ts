@@ -232,6 +232,12 @@ async function getVideoDuration(input: Buffer | string | Readable): Promise<numb
   return Math.round(parseFloat(duration));
 }
 
+function normalizeListType(listMessage?: proto.Message.IListMessage | null): void {
+  if (listMessage?.listType === proto.Message.ListMessage.ListType.PRODUCT_LIST) {
+    listMessage.listType = proto.Message.ListMessage.ListType.SINGLE_SELECT;
+  }
+}
+
 export class BaileysStartupService extends ChannelStartupService {
   private messageProcessor = new BaileysMessageProcessor();
 
@@ -259,6 +265,7 @@ export class BaileysStartupService extends ChannelStartupService {
   private endSession = false;
   private logBaileys = this.configService.get<Log>('LOG').BAILEYS;
   private eventProcessingQueue: Promise<void> = Promise.resolve();
+  private _lastStream515At = 0;
   private activeRecoverySessionId: string | null = null;
   private recoveryStartedAt: number | null = null;
   private recoveryRetryAttempt = 0;
@@ -267,6 +274,8 @@ export class BaileysStartupService extends ChannelStartupService {
   // Cache TTL constants (in seconds)
   private readonly MESSAGE_CACHE_TTL_SECONDS = 5 * 60; // 5 minutes - avoid duplicate message processing
   private readonly UPDATE_CACHE_TTL_SECONDS = 30 * 60; // 30 minutes - avoid duplicate status updates
+  private static readonly STREAM_515_RECONNECT_GRACE_MS = 30_000;
+  private static readonly STREAM_ERROR_CODE_RECONNECT = '515';
 
   public stateConnection: wa.StateConnection = { state: 'close' };
 
@@ -464,7 +473,9 @@ export class BaileysStartupService extends ChannelStartupService {
     if (connection === 'close') {
       const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
       const codesToNotReconnect = [DisconnectReason.loggedOut, DisconnectReason.forbidden, 402, 406];
-      const shouldReconnect = !codesToNotReconnect.includes(statusCode);
+      const recentStream515 = Date.now() - this._lastStream515At < BaileysStartupService.STREAM_515_RECONNECT_GRACE_MS;
+      const shouldReconnect =
+        !codesToNotReconnect.includes(statusCode) || (statusCode === DisconnectReason.loggedOut && recentStream515);
       const diagnostics = this.classifyConnectionError(lastDisconnect);
       const uptimeBeforeDropMs = this.lastOpenAt ? Date.now() - this.lastOpenAt : null;
 
@@ -766,19 +777,8 @@ export class BaileysStartupService extends ChannelStartupService {
       userDevicesCache: this.userDevicesCache,
       transactionOpts: { maxCommitRetries: 10, delayBetweenTriesMs: 3000 },
       patchMessageBeforeSending(message) {
-        if (
-          message.deviceSentMessage?.message?.listMessage?.listType === proto.Message.ListMessage.ListType.PRODUCT_LIST
-        ) {
-          message = JSON.parse(JSON.stringify(message));
-
-          message.deviceSentMessage.message.listMessage.listType = proto.Message.ListMessage.ListType.SINGLE_SELECT;
-        }
-
-        if (message.listMessage?.listType == proto.Message.ListMessage.ListType.PRODUCT_LIST) {
-          message = JSON.parse(JSON.stringify(message));
-
-          message.listMessage.listType = proto.Message.ListMessage.ListType.SINGLE_SELECT;
-        }
+        normalizeListType(message.deviceSentMessage?.message?.listMessage);
+        normalizeListType(message.listMessage);
 
         return message;
       },
@@ -804,6 +804,12 @@ export class BaileysStartupService extends ChannelStartupService {
       console.log('CB:ack,class:call', packet);
       const payload = { event: 'CB:ack,class:call', packet: packet };
       this.sendDataWebhook(Events.CALL, payload, true, ['websocket']);
+    });
+
+    this.client.ws.on('CB:stream:error', (node: { attrs?: { code?: string | number } }) => {
+      if (String(node?.attrs?.code) === BaileysStartupService.STREAM_ERROR_CODE_RECONNECT) {
+        this._lastStream515At = Date.now();
+      }
     });
 
     this.phoneNumber = number;
@@ -2440,7 +2446,7 @@ export class BaileysStartupService extends ChannelStartupService {
   ) {
     const isWA = (await this.whatsappNumber({ numbers: [number] }))?.shift();
 
-    if (!isWA.exists && !isJidGroup(isWA.jid) && !isWA.jid.includes('@broadcast')) {
+    if (!isWA.exists && !isJidGroup(isWA.jid) && !isWA.jid.includes('@broadcast') && !isWA.jid.includes('@lid')) {
       throw new BadRequestException(isWA);
     }
 
@@ -2518,7 +2524,7 @@ export class BaileysStartupService extends ChannelStartupService {
           throw new NotFoundException('Group not found');
         }
 
-        if (options?.mentionsEveryOne) {
+        if (options?.mentionsEveryOne === true) {
           mentions = group.participants.map((participant) => participant.id);
         } else if (options?.mentioned?.length) {
           mentions = options.mentioned.map((mention) => {
@@ -2714,7 +2720,7 @@ export class BaileysStartupService extends ChannelStartupService {
 
       const isWA = (await this.whatsappNumber({ numbers: [number] }))?.shift();
 
-      if (!isWA.exists && !isJidGroup(isWA.jid) && !isWA.jid.includes('@broadcast')) {
+      if (!isWA.exists && !isJidGroup(isWA.jid) && !isWA.jid.includes('@broadcast') && !isWA.jid.includes('@lid')) {
         throw new BadRequestException(isWA);
       }
 
@@ -3026,7 +3032,14 @@ export class BaileysStartupService extends ChannelStartupService {
       prepareMedia[mediaType].fileName = mediaMessage.fileName;
 
       if (mediaMessage.mediatype === 'video') {
-        prepareMedia[mediaType].gifPlayback = false;
+        prepareMedia[mediaType].gifPlayback = mediaMessage.gifPlayback === true || mediaMessage.gifPlayback === 'true';
+
+        if (mediaMessage.gifAttribution !== undefined) {
+          const gifAttribution = Number(mediaMessage.gifAttribution);
+          if (gifAttribution === 0 || gifAttribution === 1 || gifAttribution === 2) {
+            prepareMedia[mediaType].gifAttribution = gifAttribution;
+          }
+        }
       }
 
       return generateWAMessageFromContent(
@@ -3371,7 +3384,7 @@ export class BaileysStartupService extends ChannelStartupService {
         const result = this.sendMessageWithTyping<AnyMessageContent>(
           data.number,
           { audio: convert, ptt: true, mimetype: 'audio/ogg; codecs=opus' },
-          { presence: 'recording', delay: data?.delay },
+          { presence: 'recording', delay: data?.delay, quoted: data?.quoted },
           isIntegration,
         );
 
@@ -3388,7 +3401,7 @@ export class BaileysStartupService extends ChannelStartupService {
         ptt: true,
         mimetype: 'audio/ogg; codecs=opus',
       },
-      { presence: 'recording', delay: data?.delay },
+      { presence: 'recording', delay: data?.delay, quoted: data?.quoted },
       isIntegration,
     );
   }
@@ -3824,7 +3837,7 @@ export class BaileysStartupService extends ChannelStartupService {
     try {
       const keys: proto.IMessageKey[] = [];
       data.readMessages.forEach((read) => {
-        if (isJidGroup(read.remoteJid) || isPnUser(read.remoteJid)) {
+        if (!isJidBroadcast(read.remoteJid) && !isJidNewsletter(read.remoteJid)) {
           keys.push({ remoteJid: read.remoteJid, fromMe: read.fromMe, id: read.id });
         }
       });
@@ -3836,7 +3849,7 @@ export class BaileysStartupService extends ChannelStartupService {
   }
 
   public async getLastMessage(number: string) {
-    const where: any = { key: { remoteJid: number }, instanceId: this.instance.id };
+    const where: any = { key: { path: ['remoteJid'], equals: number }, instanceId: this.instanceId };
 
     const messages = await this.prismaRepository.message.findMany({
       where,
@@ -4262,7 +4275,7 @@ export class BaileysStartupService extends ChannelStartupService {
 
       const isWA = (await this.whatsappNumber({ numbers: [number] }))?.shift();
 
-      if (!isWA.exists && !isJidGroup(isWA.jid) && !isWA.jid.includes('@broadcast')) {
+      if (!isWA.exists && !isJidGroup(isWA.jid) && !isWA.jid.includes('@broadcast') && !isWA.jid.includes('@lid')) {
         throw new BadRequestException(isWA);
       }
 
