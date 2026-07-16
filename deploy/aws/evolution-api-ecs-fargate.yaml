@@ -55,9 +55,9 @@ Parameters:
   AuthenticationApiKeySecretArn:
     Type: String
     Description: Secrets Manager/SSM ARN that stores AUTHENTICATION_API_KEY.
-  RedisUri:
+  ValkeyUri:
     Type: String
-    Description: "ElastiCache Redis URI. Ex.: redis://my-redis.xxxxxx.use1.cache.amazonaws.com:6379/0"
+    Description: "Existing ElastiCache Valkey URI. The redis:// scheme is the client protocol, not the engine."
   TaskExecutionRoleArn:
     Type: String
     Description: ECS task execution role ARN (must allow ECR + CloudWatch Logs + secret reads).
@@ -67,9 +67,9 @@ Parameters:
   RdsSecurityGroupId:
     Type: AWS::EC2::SecurityGroup::Id
     Description: Security Group ID attached to RDS PostgreSQL.
-  RedisSecurityGroupId:
+  ValkeySecurityGroupId:
     Type: AWS::EC2::SecurityGroup::Id
-    Description: Security Group ID attached to ElastiCache Redis.
+    Description: Security Group ID attached to the existing ElastiCache Valkey replication group.
 
 Resources:
   Cluster:
@@ -117,10 +117,10 @@ Resources:
       ToPort: 5432
       SourceSecurityGroupId: !Ref ServiceSecurityGroup
 
-  RedisIngressFromService:
+  ValkeyIngressFromService:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
-      GroupId: !Ref RedisSecurityGroupId
+      GroupId: !Ref ValkeySecurityGroupId
       IpProtocol: tcp
       FromPort: 6379
       ToPort: 6379
@@ -163,7 +163,7 @@ Resources:
             - Name: CACHE_REDIS_ENABLED
               Value: 'true'
             - Name: CACHE_REDIS_URI
-              Value: !Ref RedisUri
+              Value: !Ref ValkeyUri
             - Name: CACHE_REDIS_SAVE_INSTANCES
               Value: 'true'
             - Name: CACHE_REDIS_TTL

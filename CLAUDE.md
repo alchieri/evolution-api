@@ -88,7 +88,7 @@ src/
 │   ├── routes/         # Express route definitions (RouterBroker pattern)
 │   └── types/          # TypeScript type definitions
 ├── config/             # Environment and app configuration
-├── cache/             # Redis and local cache implementations
+├── cache/             # Valkey-compatible and local cache implementations
 ├── exceptions/        # Custom HTTP exception classes
 ├── utils/            # Shared utilities and helpers
 └── validate/         # JSONSchema7 validation schemas
@@ -169,7 +169,8 @@ Critical configurations:
 - `DATABASE_PROVIDER`: postgresql or mysql
 - `DATABASE_CONNECTION_URI`: Database connection string
 - `AUTHENTICATION_API_KEY`: Global API authentication
-- `REDIS_ENABLED`: Enable Redis cache
+- `CACHE_REDIS_ENABLED`: Enable the Valkey-compatible cache client; the legacy
+  variable name is part of the Evolution API contract
 - `RABBITMQ_ENABLED`/`SQS_ENABLED`: Message queue options
 
 ## Development Guidelines
@@ -182,7 +183,7 @@ The project follows comprehensive development standards defined in `.cursor/rule
 - **Robust error handling** with retry logic and graceful degradation
 - **Multi-database compatibility** (PostgreSQL and MySQL)
 - **Security-first approach** with input validation and rate limiting
-- **Performance optimizations** with Redis caching and connection pooling
+- **Performance optimizations** with Valkey caching and connection pooling
 
 ### Code Standards
 - **TypeScript strict mode** with full type coverage
@@ -197,7 +198,8 @@ The project follows comprehensive development standards defined in `.cursor/rule
 - **Event-driven communication** with EventEmitter2
 - **Microservices integration** pattern for external services
 - **Connection pooling** and lifecycle management
-- **Caching strategy** with Redis primary and Node-cache fallback
+- **Caching strategy** with Valkey primary and Node-cache fallback. Redis OSS
+  must not be provisioned or restored in production/AWS.
 
 ## Testing Approach
 

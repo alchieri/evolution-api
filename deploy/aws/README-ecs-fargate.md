@@ -10,7 +10,8 @@ Este guia usa o template `deploy/aws/evolution-api-ecs-fargate.yaml` para public
   - subnets públicas (ALB)
   - subnets privadas (ECS task)
 - RDS PostgreSQL disponível
-- ElastiCache Redis disponível
+- replication group ElastiCache Valkey existente; este template não cria
+  cluster de cache
 - Certificado ACM válido na mesma região do ALB
 - Secrets (Secrets Manager ou SSM Parameter Store) para:
   - `DATABASE_CONNECTION_URI` (com `sslmode=require`)
@@ -50,12 +51,17 @@ aws cloudformation deploy \
     MaxCapacity=4 \
     DatabaseConnectionUriSecretArn='arn:aws:secretsmanager:us-east-1:123456789012:secret:prod/evolution-api/DATABASE_CONNECTION_URI-xxxx' \
     AuthenticationApiKeySecretArn='arn:aws:secretsmanager:us-east-1:123456789012:secret:prod/evolution-api/AUTHENTICATION_API_KEY-xxxx' \
-    RedisUri='redis://my-redis.xxxxxx.use1.cache.amazonaws.com:6379/0' \
+    ValkeyUri='redis://my-valkey.xxxxxx.use1.cache.amazonaws.com:6379/0' \
     TaskExecutionRoleArn='arn:aws:iam::123456789012:role/ecsTaskExecutionRole' \
     TaskRoleArn='arn:aws:iam::123456789012:role/evolution-api-task-role' \
     RdsSecurityGroupId='sg-rdsxxxx' \
-    RedisSecurityGroupId='sg-redisxxxx'
+    ValkeySecurityGroupId='sg-valkeyxxxx'
 ```
+
+`CACHE_REDIS_*` e o esquema `redis://` são nomes mantidos pelo contrato do
+cliente/protocolo da Evolution API. O engine permitido em produção/AWS é
+Valkey. Não crie Redis OSS e não use snapshots pré-migração como rollback de
+engine.
 
 ## 4) Validações pós-deploy
 

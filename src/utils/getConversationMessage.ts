@@ -76,5 +76,5 @@ export const getConversationMessage = (msg: any) => {
 
   const messageContent = getMessageContent(types);
 
-  return messageContent;
+  return messageContent ?? '';
 };
