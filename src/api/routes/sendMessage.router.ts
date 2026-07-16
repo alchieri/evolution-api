@@ -1,4 +1,5 @@
 import { RouterBroker } from '@api/abstract/abstract.router';
+import { InstanceDto } from '@api/dto/instance.dto';
 import {
   SendAudioDto,
   SendButtonsDto,
@@ -41,6 +42,11 @@ export class MessageRouter extends RouterBroker {
   constructor(...guards: RequestHandler[]) {
     super();
     this.router
+      .get(this.routerPath('capabilities'), ...guards, async (req, res) => {
+        const response = await sendMessageController.getCapabilities(req.params as unknown as InstanceDto);
+
+        return res.status(HttpStatus.OK).json(response);
+      })
       .post(this.routerPath('sendTemplate'), ...guards, async (req, res) => {
         const response = await this.dataValidate<SendTemplateDto>({
           request: req,

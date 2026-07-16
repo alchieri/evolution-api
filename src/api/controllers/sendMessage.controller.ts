@@ -1,5 +1,6 @@
 import { InstanceDto } from '@api/dto/instance.dto';
 import {
+  MessageCapabilitiesDto,
   SendAudioDto,
   SendButtonsDto,
   SendContactDto,
@@ -15,6 +16,7 @@ import {
   SendTextDto,
 } from '@api/dto/sendMessage.dto';
 import { WAMonitoringService } from '@api/services/monitor.service';
+import { Integration } from '@api/types/wa.types';
 import { BadRequestException } from '@exceptions';
 import { isBase64, isURL } from 'class-validator';
 import emojiRegex from 'emoji-regex';
@@ -30,6 +32,24 @@ function isEmoji(str: string) {
 
 export class SendMessageController {
   constructor(private readonly waMonitor: WAMonitoringService) {}
+
+  public async getCapabilities({ instanceName }: InstanceDto): Promise<MessageCapabilitiesDto> {
+    const integration = await this.waMonitor.waInstances[instanceName].integration;
+    const supportedMessageTypes = this.resolveSupportedMessageTypes(integration);
+
+    return {
+      integration,
+      supportedMessageTypes,
+      chatCommerce: {
+        outboundProduct: false,
+        outboundMultiProduct: false,
+        inboundOrderNormalization: false,
+        officialApiRequired: true,
+        reason:
+          'This Evolution transport does not provide end-to-end catalog product messages or order normalization. Use the official WhatsApp Business API for chat commerce.',
+      },
+    };
+  }
 
   public async sendTemplate({ instanceName }: InstanceDto, data: SendTemplateDto) {
     return await this.waMonitor.waInstances[instanceName].templateMessage(data);
@@ -103,5 +123,42 @@ export class SendMessageController {
 
   public async sendStatus({ instanceName }: InstanceDto, data: SendStatusDto, file?: any) {
     return await this.waMonitor.waInstances[instanceName].statusMessage(data, file);
+  }
+
+  private resolveSupportedMessageTypes(integration: string): string[] {
+    if (integration === Integration.EVOLUTION) {
+      return ['TEXT', 'MEDIA', 'AUDIO', 'INTERACTIVE_BUTTONS'];
+    }
+
+    if (integration === Integration.WHATSAPP_BUSINESS) {
+      return [
+        'TEXT',
+        'MEDIA',
+        'AUDIO',
+        'STICKER',
+        'TEMPLATE',
+        'LOCATION',
+        'CONTACT',
+        'REACTION',
+        'POLL',
+        'STATUS',
+        'INTERACTIVE_BUTTONS',
+        'INTERACTIVE_LIST',
+      ];
+    }
+
+    return [
+      'TEXT',
+      'MEDIA',
+      'AUDIO',
+      'STICKER',
+      'LOCATION',
+      'CONTACT',
+      'REACTION',
+      'POLL',
+      'STATUS',
+      'INTERACTIVE_BUTTONS',
+      'INTERACTIVE_LIST',
+    ];
   }
 }

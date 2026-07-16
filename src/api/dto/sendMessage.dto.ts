@@ -171,3 +171,15 @@ export class SendReactionDto {
   key: proto.IMessageKey;
   reaction: string;
 }
+
+export class MessageCapabilitiesDto {
+  integration: string;
+  supportedMessageTypes: string[];
+  chatCommerce: {
+    outboundProduct: boolean;
+    outboundMultiProduct: boolean;
+    inboundOrderNormalization: boolean;
+    officialApiRequired: boolean;
+    reason: string;
+  };
+}
