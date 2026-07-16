@@ -75,7 +75,7 @@ Evolution API integrates natively with many platforms:
 
 - **Node.js** 20+
 - **PostgreSQL** or **MySQL**
-- **Redis** (recommended for caching)
+- **Valkey** (recommended for distributed caching)
 
 ### Installation
 
@@ -88,7 +88,7 @@ npm install
 
 # Configure environment
 cp .env.example .env
-# Edit .env with your database, Redis, and API key
+# Edit .env with your database, Valkey, and API key
 ```
 
 ## Manual Recovery Endpoint (Layer B / Layer C)
@@ -395,7 +395,9 @@ This setup includes:
 - Private subnets for tasks, ALB + Target Group + HTTPS listener with ACM
 - Autoscaling by CPU and memory with min 1 task
 - CloudWatch logs (`awslogs`) and alarms (5xx, latency, running tasks)
-- Redis and PostgreSQL wiring for production (`sslmode=require` in database URI)
+- Existing ElastiCache Valkey and PostgreSQL wiring for production
+  (`sslmode=require` in database URI). The template does not create a cache
+  cluster and must not be used to restore Redis OSS.
 
 ---
 

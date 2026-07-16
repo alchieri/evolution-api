@@ -127,17 +127,94 @@ export class BusinessStartupService extends ChannelStartupService {
     if (!data) return;
 
     const content = data.entry[0].changes[0].value;
+    const normalizedContent = this.normalizeWebhookContent(content);
+    const remoteId = this.resolveRemoteId(normalizedContent);
 
     try {
       this.loadChatwoot();
 
-      this.eventHandler(content);
+      await this.eventHandler(normalizedContent);
 
-      this.phoneNumber = createJid(content.messages ? content.messages[0].from : content.statuses[0]?.recipient_id);
+      if (remoteId) {
+        this.phoneNumber = createJid(remoteId);
+      }
     } catch (error) {
       this.logger.error(error);
       throw new InternalServerErrorException(error?.toString());
     }
+  }
+
+  private normalizeWebhookContent(content: any) {
+    if (!content || typeof content !== 'object') return content;
+
+    const normalized = { ...content };
+    const messageEchoes = Array.isArray(normalized.message_echoes) ? normalized.message_echoes : undefined;
+    const smbMessageEchoes = Array.isArray(normalized.smb_message_echoes) ? normalized.smb_message_echoes : undefined;
+    const echoes = messageEchoes?.length ? messageEchoes : smbMessageEchoes?.length ? smbMessageEchoes : undefined;
+
+    if (!Array.isArray(normalized.messages) && echoes?.length) {
+      normalized.messages = echoes;
+    }
+
+    return normalized;
+  }
+
+  private normalizePhoneNumber(value?: string) {
+    return typeof value === 'string' ? value.replace(/\D/g, '') : '';
+  }
+
+  private resolveRemoteId(content: any) {
+    const firstMessage = content?.messages?.[0];
+    const recipient = content?.statuses?.[0]?.recipient_id;
+    const candidates = [firstMessage?.from, firstMessage?.to, recipient].filter(Boolean) as string[];
+
+    if (candidates.length === 0) return undefined;
+
+    const businessNumbers = [
+      this.normalizePhoneNumber(content?.metadata?.display_phone_number),
+      this.normalizePhoneNumber(content?.metadata?.phone_number_id),
+    ].filter(Boolean);
+    const externalCounterpart = candidates.find((candidate) => {
+      const normalizedCandidate = this.normalizePhoneNumber(candidate);
+      return normalizedCandidate && !businessNumbers.includes(normalizedCandidate);
+    });
+
+    return externalCounterpart ?? candidates[0];
+  }
+
+  private isCloudApiEchoPayload(received: any) {
+    return (
+      (Array.isArray(received?.message_echoes) && received.message_echoes.length > 0) ||
+      (Array.isArray(received?.smb_message_echoes) && received.smb_message_echoes.length > 0)
+    );
+  }
+
+  private resolveMessageRemoteId(message: any, received: any) {
+    if (this.isCloudApiEchoPayload(received)) {
+      return message?.to ?? message?.from;
+    }
+
+    return message?.from ?? message?.to;
+  }
+
+  private isCloudApiFromMe(message: any, received: any) {
+    if (this.isCloudApiEchoPayload(received)) return true;
+
+    const from = this.normalizePhoneNumber(message?.from);
+    const displayPhone = this.normalizePhoneNumber(received?.metadata?.display_phone_number);
+    const phoneNumberId = this.normalizePhoneNumber(received?.metadata?.phone_number_id);
+
+    return Boolean(from && (from === displayPhone || from === phoneNumberId));
+  }
+
+  private isCloudApiStatusFromMe(item: any, received: any) {
+    const recipient = this.normalizePhoneNumber(item?.recipient_id);
+    if (!recipient) return true;
+
+    const displayPhone = this.normalizePhoneNumber(received?.metadata?.display_phone_number);
+    const phoneNumberId = this.normalizePhoneNumber(received?.metadata?.phone_number_id);
+
+    return recipient !== displayPhone && recipient !== phoneNumberId;
   }
 
   private async downloadMediaMessage(message: any) {
@@ -386,16 +463,30 @@ export class BusinessStartupService extends ChannelStartupService {
     try {
       let messageRaw: any;
       let pushName: any;
+      const incomingContact = received?.contacts?.[0];
 
-      if (received.contacts) pushName = received.contacts[0].profile.name;
+      if (incomingContact) {
+        pushName = incomingContact?.profile?.name ?? incomingContact?.name ?? incomingContact?.wa_id ?? undefined;
+      }
 
       if (received.messages) {
-        const message = received.messages[0]; // Añadir esta línea para definir message
+        const message = received.messages[0];
+        const remoteId = this.resolveMessageRemoteId(message, received);
+        if (!remoteId) return;
+
+        const remoteJid = createJid(remoteId);
+        const contact = await this.prismaRepository.contact.findFirst({
+          where: { instanceId: this.instanceId, remoteJid },
+        });
+
+        if (!pushName) {
+          pushName = contact?.pushName ?? incomingContact?.user_id ?? incomingContact?.wa_id ?? undefined;
+        }
 
         const key = {
           id: message.id,
-          remoteJid: this.phoneNumber,
-          fromMe: message.from === received.metadata.phone_number_id,
+          remoteJid,
+          fromMe: this.isCloudApiFromMe(message, received),
         };
 
         if (message.type === 'sticker') {
@@ -697,12 +788,11 @@ export class BusinessStartupService extends ChannelStartupService {
           });
         }
 
-        const contact = await this.prismaRepository.contact.findFirst({
-          where: { instanceId: this.instanceId, remoteJid: key.remoteJid },
-        });
+        const contactPhone = incomingContact?.profile?.phone ?? incomingContact?.wa_id ?? remoteId;
+        if (!contactPhone) return;
 
         const contactRaw: any = {
-          remoteJid: received.contacts[0].profile.phone,
+          remoteJid: createJid(contactPhone),
           pushName,
           // profilePicUrl: '',
           instanceId: this.instanceId,
@@ -714,7 +804,7 @@ export class BusinessStartupService extends ChannelStartupService {
 
         if (contact) {
           const contactRaw: any = {
-            remoteJid: received.contacts[0].profile.phone,
+            remoteJid: createJid(contactPhone),
             pushName,
             // profilePicUrl: '',
             instanceId: this.instanceId,
@@ -731,7 +821,7 @@ export class BusinessStartupService extends ChannelStartupService {
           }
 
           await this.prismaRepository.contact.updateMany({
-            where: { remoteJid: contact.remoteJid },
+            where: { instanceId: this.instanceId, remoteJid: contact.remoteJid },
             data: contactRaw,
           });
           return;
@@ -745,10 +835,13 @@ export class BusinessStartupService extends ChannelStartupService {
       }
       if (received.statuses) {
         for await (const item of received.statuses) {
-          const key = {
+          const remoteId = item?.recipient_id;
+          if (!remoteId) continue;
+
+          const key: any = {
             id: item.id,
-            remoteJid: this.phoneNumber,
-            fromMe: this.phoneNumber === received.metadata.phone_number_id,
+            remoteJid: createJid(remoteId),
+            fromMe: this.isCloudApiStatusFromMe(item, received),
           };
           if (settings?.groups_ignore && key.remoteJid.includes('@g.us')) {
             return;
@@ -766,6 +859,14 @@ export class BusinessStartupService extends ChannelStartupService {
 
             if (!findMessage) {
               return;
+            }
+
+            const findMessageKey: any = findMessage?.key ?? {};
+            if (findMessageKey?.remoteJid) {
+              key.remoteJid = findMessageKey.remoteJid;
+            }
+            if (typeof findMessageKey?.fromMe === 'boolean') {
+              key.fromMe = findMessageKey.fromMe;
             }
 
             if (item.message === null && item.status === undefined) {
@@ -921,14 +1022,12 @@ export class BusinessStartupService extends ChannelStartupService {
           message.type === 'button' ||
           message.type === 'reaction'
         ) {
-          // Procesar el mensaje normalmente
-          this.messageHandle(content, database, settings);
+          await this.messageHandle(content, database, settings);
         } else {
           this.logger.warn(`Tipo de mensaje no reconocido: ${message.type}`);
         }
       } else if (content.statuses) {
-        // Procesar actualizaciones de estado
-        this.messageHandle(content, database, settings);
+        await this.messageHandle(content, database, settings);
       } else {
         this.logger.warn('No se encontraron mensajes ni estados en el contenido recibido');
       }

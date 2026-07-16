@@ -1,21 +1,18 @@
-version: '3.3'
-
 services:
-  redis:
-    image: redis:latest
+  valkey:
+    image: valkey/valkey:9.1-alpine
     networks:
       - evolution-net
-    container_name: redis
+    container_name: valkey
     command: >
-      redis-server --port 6379 --appendonly yes
+      valkey-server --port 6379 --appendonly yes
     volumes:
-      - evolution_redis:/data
+      - evolution_valkey:/data
     ports:
       - 6379:6379
 
 volumes:
-  evolution_redis:
-
+  evolution_valkey:
 
 networks:
   evolution-net:

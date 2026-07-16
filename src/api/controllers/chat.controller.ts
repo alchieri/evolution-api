@@ -4,6 +4,7 @@ import {
   DeleteMessage,
   getBase64FromMediaMessageDto,
   MarkChatUnreadDto,
+  MarkMessageAsPlayedDto,
   NumberDto,
   PrivacySettingDto,
   ProfileNameDto,
@@ -30,6 +31,10 @@ export class ChatController {
     return await this.waMonitor.waInstances[instanceName].markMessageAsRead(data);
   }
 
+  public async markMessageAsPlayed({ instanceName }: InstanceDto, data: MarkMessageAsPlayedDto) {
+    return await this.waMonitor.waInstances[instanceName].markMessageAsPlayed(data);
+  }
+
   public async archiveChat({ instanceName }: InstanceDto, data: ArchiveChatDto) {
     return await this.waMonitor.waInstances[instanceName].archiveChat(data);
   }
@@ -48,6 +53,10 @@ export class ChatController {
 
   public async fetchProfile({ instanceName }: InstanceDto, data: NumberDto) {
     return await this.waMonitor.waInstances[instanceName].fetchProfile(instanceName, data.number);
+  }
+
+  public async fetchLid({ instanceName }: InstanceDto, data: NumberDto) {
+    return await this.waMonitor.waInstances[instanceName].getLid(data.number);
   }
 
   public async fetchContacts({ instanceName }: InstanceDto, query: Query<Contact>) {

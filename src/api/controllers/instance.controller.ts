@@ -443,7 +443,7 @@ export class InstanceController {
     const { instance } = await this.connectionState({ instanceName });
 
     if (instance.state === 'close') {
-      throw new BadRequestException('The "' + instanceName + '" instance is not connected');
+      return { status: 'SUCCESS', error: false, response: { message: 'Instance was already disconnected' } };
     }
 
     try {

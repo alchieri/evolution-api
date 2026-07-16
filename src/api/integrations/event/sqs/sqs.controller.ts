@@ -30,6 +30,7 @@ export class SqsController extends EventController implements EventControllerInt
       },
 
       region: awsConfig.REGION,
+      endpoint: awsConfig.BASE_URL || undefined,
     });
 
     this.logger.info('SQS initialized');
@@ -126,7 +127,9 @@ export class SqsController extends EventController implements EventControllerInt
             ? 'singlequeue'
             : `${event.replace('.', '_').toLowerCase()}`;
         const queueName = `${prefixName}_${eventFormatted}.fifo`;
-        const sqsUrl = `https://sqs.${sqsConfig.REGION}.amazonaws.com/${sqsConfig.ACCOUNT_ID}/${queueName}`;
+        const rawBaseUrl = sqsConfig.BASE_URL || `https://sqs.${sqsConfig.REGION}.amazonaws.com`;
+        const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+        const sqsUrl = `${baseUrl}/${sqsConfig.ACCOUNT_ID}/${queueName}`;
 
         const message = {
           ...(extra ?? {}),

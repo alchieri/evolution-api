@@ -5,6 +5,7 @@ import {
   DeleteMessage,
   getBase64FromMediaMessageDto,
   MarkChatUnreadDto,
+  MarkMessageAsPlayedDto,
   NumberDto,
   PrivacySettingDto,
   ProfileNameDto,
@@ -24,7 +25,9 @@ import {
   blockUserSchema,
   contactValidateSchema,
   deleteMessageSchema,
+  fetchLidSchema,
   markChatUnreadSchema,
+  markMessageAsPlayedSchema,
   messageUpSchema,
   messageValidateSchema,
   presenceSchema,
@@ -66,6 +69,16 @@ export class ChatRouter extends RouterBroker {
           schema: readMessageSchema,
           ClassRef: ReadMessageDto,
           execute: (instance, data) => chatController.readMessage(instance, data),
+        });
+
+        return res.status(HttpStatus.CREATED).json(response);
+      })
+      .post(this.routerPath('markMessageAsPlayed'), ...guards, async (req, res) => {
+        const response = await this.dataValidate<MarkMessageAsPlayedDto>({
+          request: req,
+          schema: markMessageAsPlayedSchema,
+          ClassRef: MarkMessageAsPlayedDto,
+          execute: (instance, data) => chatController.markMessageAsPlayed(instance, data),
         });
 
         return res.status(HttpStatus.CREATED).json(response);
@@ -218,6 +231,16 @@ export class ChatRouter extends RouterBroker {
           schema: profileSchema,
           ClassRef: NumberDto,
           execute: (instance, data) => chatController.fetchProfile(instance, data),
+        });
+
+        return res.status(HttpStatus.OK).json(response);
+      })
+      .post(this.routerPath('fetchLid'), ...guards, async (req, res) => {
+        const response = await this.dataValidate<NumberDto>({
+          request: req,
+          schema: fetchLidSchema,
+          ClassRef: NumberDto,
+          execute: (instance, data) => chatController.fetchLid(instance, data),
         });
 
         return res.status(HttpStatus.OK).json(response);

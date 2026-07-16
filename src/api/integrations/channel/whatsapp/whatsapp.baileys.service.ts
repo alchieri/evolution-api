@@ -7,6 +7,7 @@ import {
   getBase64FromMediaMessageDto,
   LastMessage,
   MarkChatUnreadDto,
+  MarkMessageAsPlayedDto,
   NumberBusiness,
   OnWhatsAppDto,
   PrivacySettingDto,
@@ -26,6 +27,7 @@ import {
   GroupSendInvite,
   GroupSubjectDto,
   GroupToggleEphemeralDto,
+  GroupUpdateMemberAddModeDto,
   GroupUpdateParticipantDto,
   GroupUpdateSettingDto,
 } from '@api/dto/group.dto';
@@ -270,6 +272,10 @@ export class BaileysStartupService extends ChannelStartupService {
   private recoveryStartedAt: number | null = null;
   private recoveryRetryAttempt = 0;
   private lastOpenAt: number | null = null;
+  private historySyncMessageCount = 0;
+  private historySyncChatCount = 0;
+  private historySyncContactCount = 0;
+  private historySyncLastProgress = -1;
 
   // Cache TTL constants (in seconds)
   private readonly MESSAGE_CACHE_TTL_SECONDS = 5 * 60; // 5 minutes - avoid duplicate message processing
@@ -286,10 +292,27 @@ export class BaileysStartupService extends ChannelStartupService {
   }
 
   public async logoutInstance() {
+    this.endSession = true;
     this.messageProcessor.onDestroy();
-    await this.client?.logout('Log out instance: ' + this.instanceName);
 
-    this.client?.ws?.close();
+    if (this.client) {
+      try {
+        await this.client.logout('Log out instance: ' + this.instanceName);
+      } catch (error) {
+        this.logger.warn(
+          `logoutInstance: client.logout() failed (${(error as Error)?.message}), proceeding with credential cleanup`,
+        );
+      }
+
+      try {
+        this.client.ws?.close();
+        this.client.end(new Error('Instance logout'));
+      } catch {
+        // The socket may already be closed; credential cleanup must still run.
+      }
+    }
+
+    this.stateConnection = { state: 'close', statusReason: 401 };
 
     const db = this.configService.get<Database>('DATABASE');
     const cache = this.configService.get<CacheConf>('CACHE');
@@ -317,6 +340,11 @@ export class BaileysStartupService extends ChannelStartupService {
     if (sessionExists) {
       await this.prismaRepository.session.delete({ where: { sessionId: this.instanceId } });
     }
+
+    await this.prismaRepository.instance.update({
+      where: { id: this.instanceId },
+      data: { connectionStatus: 'close' },
+    });
   }
 
   public async getProfileName() {
@@ -471,6 +499,11 @@ export class BaileysStartupService extends ChannelStartupService {
     }
 
     if (connection === 'close') {
+      if (this.endSession) {
+        this.logger.info('Session is ending, skipping reconnection attempt');
+        return;
+      }
+
       const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
       const codesToNotReconnect = [DisconnectReason.loggedOut, DisconnectReason.forbidden, 402, 406];
       const recentStream515 = Date.now() - this._lastStream515At < BaileysStartupService.STREAM_515_RECONNECT_GRACE_MS;
@@ -551,6 +584,11 @@ export class BaileysStartupService extends ChannelStartupService {
     }
 
     if (connection === 'open') {
+      if (!this.client?.user?.id) {
+        this.logger.warn('Connection opened without an authenticated user, skipping state update');
+        return;
+      }
+
       if (this.activeRecoverySessionId && this.recoveryStartedAt) {
         this.logger.log({
           msg: 'connection recovery completed',
@@ -1037,6 +1075,15 @@ export class BaileysStartupService extends ChannelStartupService {
       syncType?: proto.HistorySync.HistorySyncType;
     }) => {
       try {
+        const normalizedProgress = progress ?? -1;
+
+        if (normalizedProgress <= this.historySyncLastProgress) {
+          this.historySyncMessageCount = 0;
+          this.historySyncChatCount = 0;
+          this.historySyncContactCount = 0;
+        }
+        this.historySyncLastProgress = normalizedProgress;
+
         if (syncType === proto.HistorySync.HistorySyncType.ON_DEMAND) {
           console.log('received on-demand history sync, messages=', messages);
         }
@@ -1086,11 +1133,12 @@ export class BaileysStartupService extends ChannelStartupService {
           chatsRaw.push({ remoteJid: chat.id, instanceId: this.instanceId, name: chat.name });
         }
 
-        this.sendDataWebhook(Events.CHATS_SET, chatsRaw);
-
         if (this.configService.get<Database>('DATABASE').SAVE_DATA.HISTORIC) {
           await this.prismaRepository.chat.createMany({ data: chatsRaw, skipDuplicates: true });
         }
+
+        this.historySyncChatCount += chatsRaw.length;
+        this.sendDataWebhook(Events.CHATS_SET, chatsRaw);
 
         const messagesRaw: any[] = [];
 
@@ -1143,14 +1191,16 @@ export class BaileysStartupService extends ChannelStartupService {
           messagesRaw.push(this.prepareMessage(m));
         }
 
-        this.sendDataWebhook(Events.MESSAGES_SET, [...messagesRaw], true, undefined, {
-          isLatest,
-          progress,
-        });
+        this.historySyncMessageCount += messagesRaw.length;
 
         if (this.configService.get<Database>('DATABASE').SAVE_DATA.HISTORIC) {
           await this.prismaRepository.message.createMany({ data: messagesRaw, skipDuplicates: true });
         }
+
+        this.sendDataWebhook(Events.MESSAGES_SET, [...messagesRaw], true, undefined, {
+          isLatest,
+          progress,
+        });
 
         if (
           this.configService.get<Chatwoot>('CHATWOOT').ENABLED &&
@@ -1164,8 +1214,25 @@ export class BaileysStartupService extends ChannelStartupService {
           );
         }
 
+        const filteredContacts = contacts.filter((contact) => !!contact.notify || !!contact.name);
+        this.historySyncContactCount += filteredContacts.length;
+
+        if (normalizedProgress === 100) {
+          this.sendDataWebhook(Events.MESSAGING_HISTORY_SET, {
+            messageCount: this.historySyncMessageCount,
+            chatCount: this.historySyncChatCount,
+            contactCount: this.historySyncContactCount,
+            progress: normalizedProgress,
+          });
+
+          this.historySyncMessageCount = 0;
+          this.historySyncChatCount = 0;
+          this.historySyncContactCount = 0;
+          this.historySyncLastProgress = -1;
+        }
+
         await this.contactHandle['contacts.upsert'](
-          contacts.filter((c) => !!c.notify || !!c.name).map((c) => ({ id: c.id, name: c.name ?? c.notify })),
+          filteredContacts.map((contact) => ({ id: contact.id, name: contact.name ?? contact.notify })),
         );
 
         contacts = undefined;
@@ -2213,6 +2280,22 @@ export class BaileysStartupService extends ChannelStartupService {
       return { wuid: jid, status: (await this.client.fetchStatus(jid))[0]?.status };
     } catch {
       return { wuid: jid, status: null };
+    }
+  }
+
+  public async getLid(number: string) {
+    const jid = createJid(number);
+
+    if (!this.client?.signalRepository) {
+      return { wuid: jid, lid: null };
+    }
+
+    try {
+      const lid = await this.client.signalRepository.lidMapping.getLIDForPN(jid);
+      return { wuid: jid, lid: lid || null };
+    } catch (error) {
+      this.logger.error(`Failed to fetch LID for ${jid}: ${(error as Error)?.message}`);
+      return { wuid: jid, lid: null };
     }
   }
 
@@ -3848,6 +3931,21 @@ export class BaileysStartupService extends ChannelStartupService {
     }
   }
 
+  public async markMessageAsPlayed(data: MarkMessageAsPlayedDto) {
+    try {
+      const keys: proto.IMessageKey[] = [];
+      data.playedMessages.forEach((played) => {
+        if (!isJidBroadcast(played.remoteJid) && !isJidNewsletter(played.remoteJid)) {
+          keys.push({ remoteJid: played.remoteJid, fromMe: played.fromMe, id: played.id });
+        }
+      });
+      await this.client.sendReceipts(keys, 'played');
+      return { message: 'Played messages', played: 'success' };
+    } catch (error) {
+      throw new InternalServerErrorException('Mark messages as played fail', error.toString());
+    }
+  }
+
   public async getLastMessage(number: string) {
     const where: any = { key: { path: ['remoteJid'], equals: number }, instanceId: this.instanceId };
 
@@ -4745,6 +4843,15 @@ export class BaileysStartupService extends ChannelStartupService {
       return { updateSetting: updateSetting };
     } catch (error) {
       throw new BadRequestException('Error updating setting', error.toString());
+    }
+  }
+
+  public async updateMemberAddMode(update: GroupUpdateMemberAddModeDto) {
+    try {
+      await this.client.groupMemberAddMode(update.groupJid, update.mode);
+      return { update: 'success', mode: update.mode };
+    } catch (error) {
+      throw new BadRequestException('Error updating member add mode', error.toString());
     }
   }
 

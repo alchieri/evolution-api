@@ -29,7 +29,7 @@ This document provides comprehensive guidelines for AI agents (Claude, GPT, Curs
 - **`utils/`** – Shared utilities and helper functions
 - **`validate/`** – JSONSchema7 validation schemas
 - **`exceptions/`** – Custom HTTP exception classes
-- **`cache/`** – Redis and local cache implementations
+- **`cache/`** – Valkey-compatible and local cache implementations
 
 ### Build & Deployment
 - **`dist/`** – Build output (do not edit directly)
@@ -83,7 +83,7 @@ npm run db:studio      # Open Prisma Studio
 
 ### Docker Development
 ```bash
-# Start local services (Redis, PostgreSQL, etc.)
+# Start local services (Valkey, PostgreSQL, etc.)
 docker-compose up -d
 
 # Full development stack
@@ -336,15 +336,16 @@ export DATABASE_PROVIDER=postgresql  # or mysql
 ## Performance & Scalability
 
 ### Caching Strategy
-- **Redis primary**: Distributed caching for production
-- **Node-cache fallback**: Local caching when Redis unavailable
+- **Valkey primary**: Distributed caching for production. Do not provision or
+  restore Redis OSS in production/AWS.
+- **Node-cache fallback**: Local caching when Valkey is unavailable
 - **TTL strategy**: Appropriate cache expiration per data type
 - **Cache invalidation**: Proper invalidation on data changes
 
 ### Connection Management
 - **Database**: Prisma connection pooling
 - **WhatsApp**: One connection per instance with lifecycle management
-- **Redis**: Connection pooling and retry logic
+- **Valkey**: Connection pooling and retry logic through the Redis-compatible client
 - **External APIs**: Rate limiting and retry with exponential backoff
 
 ### Monitoring & Observability
@@ -352,4 +353,3 @@ export DATABASE_PROVIDER=postgresql  # or mysql
 - **Error tracking**: Comprehensive error scenarios
 - **Health checks**: Instance status and connection monitoring
 - **Telemetry**: Usage analytics (non-sensitive data only)
-
