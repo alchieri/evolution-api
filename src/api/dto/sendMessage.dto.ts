@@ -172,6 +172,19 @@ export class SendReactionDto {
   reaction: string;
 }
 
+export class CarouselCard {
+  title?: string;
+  body: string;
+  footer?: string;
+  imageUrl?: string;
+  buttons: Button[];
+}
+
+export class SendCarouselDto extends Metadata {
+  body: string;
+  cards: CarouselCard[];
+}
+
 export class MessageCapabilitiesDto {
   integration: string;
   supportedMessageTypes: string[];

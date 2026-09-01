@@ -1,6 +1,7 @@
 import { prismaRepository } from '@api/server.module';
 import { configService, Database } from '@config/env.config';
 import { Logger } from '@config/logger.config';
+import { Prisma } from '@prisma/client';
 import dayjs from 'dayjs';
 
 const logger = new Logger('OnWhatsappCache');
@@ -176,9 +177,27 @@ export async function saveOnWhatsappCache(data: ISaveOnWhatsappCacheParams[]) {
         logger.verbose(
           `[saveOnWhatsappCache] Register does not exist, creating: remoteJid=${remoteJid}, jidOptions=${dataPayload.jidOptions}, lid=${dataPayload.lid}`,
         );
-        await prismaRepository.isOnWhatsapp.create({
-          data: dataPayload,
-        });
+        try {
+          await prismaRepository.isOnWhatsapp.create({
+            data: dataPayload,
+          });
+        } catch (error) {
+          const uniqueTarget = error instanceof Prisma.PrismaClientKnownRequestError ? error.meta?.target : undefined;
+          const targets = Array.isArray(uniqueTarget) ? uniqueTarget : [String(uniqueTarget ?? '')];
+          if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === 'P2002' &&
+            targets.some((target) => target.includes('remoteJid'))
+          ) {
+            logger.verbose(`[saveOnWhatsappCache] Concurrent create detected for ${remoteJid}; updating it.`);
+            await prismaRepository.isOnWhatsapp.update({
+              where: { remoteJid },
+              data: dataPayload,
+            });
+          } else {
+            throw error;
+          }
+        }
       }
     } catch (e) {
       // Loga o erro mas não para a execução dos outros promises

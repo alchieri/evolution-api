@@ -1,6 +1,7 @@
 import {
   ArchiveChatDto,
   BlockUserDto,
+  DecryptPollVoteDto,
   DeleteMessage,
   getBase64FromMediaMessageDto,
   MarkChatUnreadDto,
@@ -121,5 +122,16 @@ export class ChatController {
 
   public async blockUser({ instanceName }: InstanceDto, data: BlockUserDto) {
     return await this.waMonitor.waInstances[instanceName].blockUser(data);
+  }
+
+  public async decryptPollVote({ instanceName }: InstanceDto, data: DecryptPollVoteDto) {
+    return await this.waMonitor.waInstances[instanceName].baileysDecryptPollVote({
+      id: data.message.key.id,
+      remoteJid: data.remoteJid,
+    });
+  }
+
+  public async fetchChannels({ instanceName }: InstanceDto, query: Query<Contact>) {
+    return await this.waMonitor.waInstances[instanceName].fetchChannels(query);
   }
 }

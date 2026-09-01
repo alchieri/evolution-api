@@ -3,6 +3,7 @@ import {
   MessageCapabilitiesDto,
   SendAudioDto,
   SendButtonsDto,
+  SendCarouselDto,
   SendContactDto,
   SendListDto,
   SendLocationDto,
@@ -36,6 +37,7 @@ export class SendMessageController {
   public async getCapabilities({ instanceName }: InstanceDto): Promise<MessageCapabilitiesDto> {
     const integration = await this.waMonitor.waInstances[instanceName].integration;
     const supportedMessageTypes = this.resolveSupportedMessageTypes(integration);
+    const supportsInboundCatalogOrders = integration === Integration.WHATSAPP_BAILEYS;
 
     return {
       integration,
@@ -43,10 +45,10 @@ export class SendMessageController {
       chatCommerce: {
         outboundProduct: false,
         outboundMultiProduct: false,
-        inboundOrderNormalization: false,
+        inboundOrderNormalization: supportsInboundCatalogOrders,
         officialApiRequired: true,
         reason:
-          'This Evolution transport does not provide end-to-end catalog product messages or order normalization. Use the official WhatsApp Business API for chat commerce.',
+          'Inbound catalog orders are normalized for Chatwoot on Baileys. Outbound catalog messages still require the official WhatsApp Business API.',
       },
     };
   }
@@ -106,6 +108,10 @@ export class SendMessageController {
     return await this.waMonitor.waInstances[instanceName].listMessage(data);
   }
 
+  public async sendCarousel({ instanceName }: InstanceDto, data: SendCarouselDto) {
+    return await this.waMonitor.waInstances[instanceName].carouselMessage(data);
+  }
+
   public async sendContact({ instanceName }: InstanceDto, data: SendContactDto) {
     return await this.waMonitor.waInstances[instanceName].contactMessage(data);
   }
@@ -159,6 +165,7 @@ export class SendMessageController {
       'STATUS',
       'INTERACTIVE_BUTTONS',
       'INTERACTIVE_LIST',
+      'CATALOG_ORDER',
     ];
   }
 }

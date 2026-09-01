@@ -131,3 +131,12 @@ export class BlockUserDto {
   number: string;
   status: 'block' | 'unblock';
 }
+
+export class DecryptPollVoteDto {
+  message: {
+    key: {
+      id: string;
+    };
+  };
+  remoteJid: string;
+}

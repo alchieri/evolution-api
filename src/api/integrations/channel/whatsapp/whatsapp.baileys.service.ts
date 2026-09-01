@@ -35,12 +35,14 @@ import { InstanceDto, SetPresenceDto } from '@api/dto/instance.dto';
 import { HandleLabelDto, LabelDto } from '@api/dto/label.dto';
 import {
   Button,
+  CarouselCard,
   ContactMessage,
   KeyType,
   MediaMessage,
   Options,
   SendAudioDto,
   SendButtonsDto,
+  SendCarouselDto,
   SendContactDto,
   SendListDto,
   SendLocationDto,
@@ -94,6 +96,7 @@ import { useMultiFileAuthStateRedisDb } from '@utils/use-multi-file-auth-state-r
 import axios from 'axios';
 import makeWASocket, {
   AnyMessageContent,
+  BinaryNode,
   BufferedEventData,
   BufferJSON,
   CacheStore,
@@ -155,6 +158,7 @@ import { PassThrough, Readable } from 'stream';
 import { v4 } from 'uuid';
 
 import { BaileysMessageProcessor } from './baileysMessage.processor';
+import { buildInteractiveBizNode, buildListBizNode, toNativeFlowButton } from './helpers/interactiveMessage.helper';
 import { useVoiceCallsBaileys } from './voiceCalls/useVoiceCallsBaileys';
 
 export interface ExtendedIMessageKey extends proto.IMessageKey {
@@ -504,6 +508,12 @@ export class BaileysStartupService extends ChannelStartupService {
         return;
       }
 
+      const isInitialConnection = !this.instance.wuid && (this.instance.qrcode?.count ?? 0) === 0;
+      if (isInitialConnection) {
+        this.logger.info('Initial connection closed before QR generation; waiting for the QR flow');
+        return;
+      }
+
       const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode;
       const codesToNotReconnect = [DisconnectReason.loggedOut, DisconnectReason.forbidden, 402, 406];
       const recentStream515 = Date.now() - this._lastStream515At < BaileysStartupService.STREAM_515_RECONNECT_GRACE_MS;
@@ -662,12 +672,24 @@ export class BaileysStartupService extends ChannelStartupService {
 
   private async getMessage(key: proto.IMessageKey, full = false) {
     try {
-      // Use raw SQL to avoid JSON path issues
-      const webMessageInfo = (await this.prismaRepository.$queryRaw`
-        SELECT * FROM "Message"
-        WHERE "instanceId" = ${this.instanceId}
-        AND "key"->>'id' = ${key.id}
-      `) as proto.IWebMessageInfo[];
+      const provider = this.configService.get<Database>('DATABASE').PROVIDER;
+      let webMessageInfo: proto.IWebMessageInfo[];
+
+      if (provider === 'mysql') {
+        webMessageInfo = (await this.prismaRepository.$queryRaw`
+          SELECT * FROM Message
+          WHERE instanceId = ${this.instanceId}
+          AND JSON_UNQUOTE(JSON_EXTRACT(\`key\`, '$.id')) = ${key.id}
+          LIMIT 1
+        `) as proto.IWebMessageInfo[];
+      } else {
+        webMessageInfo = (await this.prismaRepository.$queryRaw`
+          SELECT * FROM "Message"
+          WHERE "instanceId" = ${this.instanceId}
+          AND "key"->>'id' = ${key.id}
+          LIMIT 1
+        `) as proto.IWebMessageInfo[];
+      }
 
       if (full) {
         return webMessageInfo[0];
@@ -1780,7 +1802,13 @@ export class BaileysStartupService extends ChannelStartupService {
       const readChatToUpdate: Record<string, true> = {}; // {remoteJid: true}
 
       for await (const { key, update } of args) {
-        if (settings?.groupsIgnore && key.remoteJid?.includes('@g.us')) {
+        const normalizedRemoteJid = key.remoteJid ? jidNormalizedUser(key.remoteJid) : undefined;
+        const normalizedParticipant = key.participant ? jidNormalizedUser(key.participant) : undefined;
+
+        if (normalizedRemoteJid) key.remoteJid = normalizedRemoteJid;
+        if (normalizedParticipant) key.participant = normalizedParticipant;
+
+        if (settings?.groupsIgnore && normalizedRemoteJid?.includes('@g.us')) {
           continue;
         }
 
@@ -1831,9 +1859,9 @@ export class BaileysStartupService extends ChannelStartupService {
 
           const message: any = {
             keyId: key.id,
-            remoteJid: key?.remoteJid,
+            remoteJid: normalizedRemoteJid,
             fromMe: key.fromMe,
-            participant: key?.participant,
+            participant: normalizedParticipant,
             status: status[update.status] ?? 'SERVER_ACK',
             pollUpdates,
             instanceId: this.instanceId,
@@ -1855,18 +1883,43 @@ export class BaileysStartupService extends ChannelStartupService {
             }
 
             const searchId = originalMessageId || key.id;
+            const dbProvider = this.configService.get<Database>('DATABASE').PROVIDER;
 
-            const messages = (await this.prismaRepository.$queryRaw`
-              SELECT * FROM "Message"
-              WHERE "instanceId" = ${this.instanceId}
-              AND "key"->>'id' = ${searchId}
-              LIMIT 1
-            `) as any[];
-            findMessage = messages[0] || null;
+            const maxRetries = 3;
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+              let messages: any[];
+              if (dbProvider === 'mysql') {
+                messages = (await this.prismaRepository.$queryRaw`
+                  SELECT * FROM Message
+                  WHERE instanceId = ${this.instanceId}
+                  AND JSON_UNQUOTE(JSON_EXTRACT(\`key\`, '$.id')) = ${searchId}
+                  LIMIT 1
+                `) as any[];
+              } else {
+                messages = (await this.prismaRepository.$queryRaw`
+                  SELECT * FROM "Message"
+                  WHERE "instanceId" = ${this.instanceId}
+                  AND "key"->>'id' = ${searchId}
+                  LIMIT 1
+                `) as any[];
+              }
+              findMessage = messages[0] || null;
+
+              if (findMessage?.id || attempt === maxRetries) break;
+              await delay(500);
+            }
 
             if (!findMessage?.id) {
-              this.logger.warn(`Original message not found for update. Skipping. Key: ${JSON.stringify(key)}`);
+              this.logger.verbose(
+                `Original message not found after ${maxRetries} attempts. Skipping update. Key: ${JSON.stringify(key)}`,
+              );
               continue;
+            }
+
+            const storedKey = findMessage.key as WAMessageKey;
+            if (storedKey?.remoteJid && storedKey.remoteJid !== key.remoteJid) {
+              key.remoteJid = storedKey.remoteJid;
+              message.remoteJid = storedKey.remoteJid;
             }
             message.messageId = findMessage.id;
           }
@@ -2371,6 +2424,7 @@ export class BaileysStartupService extends ChannelStartupService {
     messageId?: string,
     ephemeralExpiration?: number,
     contextInfo?: any,
+    additionalNodes?: BinaryNode[],
     // participants?: GroupParticipant[],
   ) {
     sender = sender.toLowerCase();
@@ -2390,14 +2444,17 @@ export class BaileysStartupService extends ChannelStartupService {
     // NOTE: NÃO DEVEMOS GERAR O messageId AQUI, SOMENTE SE VIER INFORMADO POR PARAMETRO. A GERAÇÃO ANTERIOR IMPEDE O WZAP DE IDENTIFICAR A SOURCE.
     if (messageId) option.messageId = messageId;
 
-    if (message['viewOnceMessage']) {
+    if (message['viewOnceMessage'] || message['interactiveMessage'] || message['listMessage']) {
       const m = generateWAMessageFromContent(sender, message, {
         timestamp: new Date(),
         userJid: this.instance.wuid,
         messageId,
         quoted,
       });
-      const id = await this.client.relayMessage(sender, message, { messageId });
+      const id = await this.client.relayMessage(sender, message, {
+        messageId,
+        ...(additionalNodes?.length ? { additionalNodes } : {}),
+      });
       m.key = { id: id, remoteJid: sender, participant: isPnUser(sender) ? sender : undefined, fromMe: true };
       for (const [key, value] of Object.entries(m)) {
         if (!value || (isArray(value) && value.length) === 0) {
@@ -2526,6 +2583,7 @@ export class BaileysStartupService extends ChannelStartupService {
     message: T,
     options?: Options,
     isIntegration = false,
+    additionalNodes?: BinaryNode[],
   ) {
     const isWA = (await this.whatsappNumber({ numbers: [number] }))?.shift();
 
@@ -2627,6 +2685,8 @@ export class BaileysStartupService extends ChannelStartupService {
           quoted,
           null,
           group?.ephemeralDuration,
+          undefined,
+          additionalNodes,
           // group?.participants,
         );
       } else {
@@ -2650,6 +2710,7 @@ export class BaileysStartupService extends ChannelStartupService {
           null,
           undefined,
           contextInfo,
+          additionalNodes,
         );
       }
 
@@ -3554,22 +3615,20 @@ export class BaileysStartupService extends ChannelStartupService {
   ]);
 
   public async buttonMessage(data: SendButtonsDto) {
-    if (data.buttons.length === 0) {
+    if (!data.buttons?.length) {
       throw new BadRequestException('At least one button is required');
     }
 
     const hasReplyButtons = data.buttons.some((btn) => btn.type === 'reply');
-
     const hasPixButton = data.buttons.some((btn) => btn.type === 'pix');
-
-    const hasOtherButtons = data.buttons.some((btn) => btn.type !== 'reply' && btn.type !== 'pix');
+    const hasCTAButtons = data.buttons.some((btn) => ['url', 'call', 'copy'].includes(btn.type));
 
     if (hasReplyButtons) {
       if (data.buttons.length > 3) {
         throw new BadRequestException('Maximum of 3 reply buttons allowed');
       }
-      if (hasOtherButtons) {
-        throw new BadRequestException('Reply buttons cannot be mixed with other button types');
+      if (hasCTAButtons || hasPixButton) {
+        throw new BadRequestException('Reply buttons cannot be mixed with CTA or PIX buttons');
       }
     }
 
@@ -3577,82 +3636,77 @@ export class BaileysStartupService extends ChannelStartupService {
       if (data.buttons.length > 1) {
         throw new BadRequestException('Only one PIX button is allowed');
       }
-      if (hasOtherButtons) {
+      if (hasReplyButtons || hasCTAButtons) {
         throw new BadRequestException('PIX button cannot be mixed with other button types');
       }
 
       const message: proto.IMessage = {
-        viewOnceMessage: {
-          message: {
-            interactiveMessage: {
-              nativeFlowMessage: {
-                buttons: [{ name: this.mapType.get('pix'), buttonParamsJson: this.toJSONString(data.buttons[0]) }],
-                messageParamsJson: JSON.stringify({ from: 'api', templateId: v4() }),
-              },
-            },
+        interactiveMessage: {
+          nativeFlowMessage: {
+            buttons: [{ name: this.mapType.get('pix'), buttonParamsJson: this.toJSONString(data.buttons[0]) }],
+            messageParamsJson: JSON.stringify({ from: 'api', templateId: v4() }),
           },
         },
       };
 
-      return await this.sendMessageWithTyping(data.number, message, {
+      return await this.sendMessageWithTyping(
+        data.number,
+        message,
+        {
+          delay: data?.delay,
+          presence: 'composing',
+          quoted: data?.quoted,
+          mentionsEveryOne: data?.mentionsEveryOne,
+          mentioned: data?.mentioned,
+        },
+        false,
+        [buildInteractiveBizNode()],
+      );
+    }
+
+    if (hasCTAButtons && data.buttons.length > 2) {
+      throw new BadRequestException('Maximum of 2 CTA buttons allowed');
+    }
+
+    const generatedMedia = data.thumbnailUrl
+      ? await this.prepareMediaMessage({ mediatype: 'image', media: data.thumbnailUrl })
+      : null;
+
+    const buttons = data.buttons.map((button) => ({
+      name: this.mapType.get(button.type),
+      buttonParamsJson: this.toJSONString(button),
+    }));
+
+    const message: proto.IMessage = {
+      interactiveMessage: {
+        body: { text: data.description ? `*${data.title}*\n\n${data.description}` : `*${data.title}*` },
+        footer: data.footer ? { text: data.footer } : undefined,
+        header: generatedMedia?.message?.imageMessage
+          ? {
+              hasMediaAttachment: true,
+              imageMessage: generatedMedia.message.imageMessage,
+            }
+          : undefined,
+        nativeFlowMessage: {
+          buttons,
+          messageParamsJson: JSON.stringify({ from: 'api', templateId: v4() }),
+        },
+      },
+    };
+
+    return await this.sendMessageWithTyping(
+      data.number,
+      message,
+      {
         delay: data?.delay,
         presence: 'composing',
         quoted: data?.quoted,
         mentionsEveryOne: data?.mentionsEveryOne,
         mentioned: data?.mentioned,
-      });
-    }
-
-    const generate = await (async () => {
-      if (data?.thumbnailUrl) {
-        return await this.prepareMediaMessage({ mediatype: 'image', media: data.thumbnailUrl });
-      }
-    })();
-
-    const buttons = data.buttons.map((value) => {
-      return { name: this.mapType.get(value.type), buttonParamsJson: this.toJSONString(value) };
-    });
-
-    const message: proto.IMessage = {
-      viewOnceMessage: {
-        message: {
-          interactiveMessage: {
-            body: {
-              text: (() => {
-                let t = '*' + data.title + '*';
-                if (data?.description) {
-                  t += '\n\n';
-                  t += data.description;
-                  t += '\n';
-                }
-                return t;
-              })(),
-            },
-            footer: { text: data?.footer },
-            header: (() => {
-              if (generate?.message?.imageMessage) {
-                return {
-                  hasMediaAttachment: !!generate.message.imageMessage,
-                  imageMessage: generate.message.imageMessage,
-                };
-              }
-            })(),
-            nativeFlowMessage: {
-              buttons: buttons,
-              messageParamsJson: JSON.stringify({ from: 'api', templateId: v4() }),
-            },
-          },
-        },
       },
-    };
-
-    return await this.sendMessageWithTyping(data.number, message, {
-      delay: data?.delay,
-      presence: 'composing',
-      quoted: data?.quoted,
-      mentionsEveryOne: data?.mentionsEveryOne,
-      mentioned: data?.mentioned,
-    });
+      false,
+      [buildInteractiveBizNode()],
+    );
   }
 
   public async locationMessage(data: SendLocationDto) {
@@ -3677,18 +3731,27 @@ export class BaileysStartupService extends ChannelStartupService {
   }
 
   public async listMessage(data: SendListDto) {
+    const message: proto.IMessage = {
+      listMessage: {
+        title: data.title || '',
+        description: data.description || '',
+        buttonText: data.buttonText || 'View menu',
+        footerText: data.footerText || '',
+        listType: proto.Message.ListMessage.ListType.SINGLE_SELECT,
+        sections: (data.sections || []).map((section) => ({
+          title: section.title || '',
+          rows: (section.rows || []).map((row) => ({
+            title: row.title || '',
+            description: row.description || '',
+            rowId: row.rowId || '',
+          })),
+        })),
+      },
+    };
+
     return await this.sendMessageWithTyping(
       data.number,
-      {
-        listMessage: {
-          title: data.title,
-          description: data.description,
-          buttonText: data?.buttonText,
-          footerText: data?.footerText,
-          sections: data.sections,
-          listType: 2,
-        },
-      },
+      message,
       {
         delay: data?.delay,
         presence: 'composing',
@@ -3696,6 +3759,89 @@ export class BaileysStartupService extends ChannelStartupService {
         mentionsEveryOne: data?.mentionsEveryOne,
         mentioned: data?.mentioned,
       },
+      false,
+      [buildListBizNode()],
+    );
+  }
+
+  public async carouselMessage(data: SendCarouselDto) {
+    if (!data.cards?.length) {
+      throw new BadRequestException('At least one card is required');
+    }
+    if (data.cards.length > 10) {
+      throw new BadRequestException('Maximum of 10 cards allowed');
+    }
+
+    for (const card of data.cards) {
+      if (!card.buttons?.length) {
+        throw new BadRequestException('Each card must have at least one button');
+      }
+      if (card.buttons.length > 3) {
+        throw new BadRequestException('Maximum of 3 buttons per card');
+      }
+      if (card.buttons.some((button) => button.type === 'pix')) {
+        throw new BadRequestException('PIX buttons are not supported in carousel');
+      }
+    }
+
+    const buildCardButtons = (card: CarouselCard) =>
+      card.buttons.map((button) =>
+        toNativeFlowButton(button, {
+          generateRandomId: this.generateRandomId.bind(this),
+          mapKeyType: this.mapKeyType,
+        }),
+      );
+
+    let interactiveMessage: proto.Message.IInteractiveMessage;
+    const singleCardWithoutImage = data.cards.length === 1 && !data.cards[0].imageUrl;
+
+    if (singleCardWithoutImage) {
+      const card = data.cards[0];
+      interactiveMessage = {
+        body: { text: card.body },
+        footer: card.footer ? { text: card.footer } : undefined,
+        nativeFlowMessage: {
+          buttons: buildCardButtons(card),
+          messageParamsJson: JSON.stringify({ from: 'api', templateId: v4() }),
+        },
+      };
+    } else {
+      const cards = await Promise.all(
+        data.cards.map(async (card) => {
+          let header: proto.Message.InteractiveMessage.IHeader | undefined;
+          if (card.imageUrl) {
+            const prepared = await this.prepareMediaMessage({ mediatype: 'image', media: card.imageUrl });
+            if (prepared?.message?.imageMessage) {
+              header = { hasMediaAttachment: true, imageMessage: prepared.message.imageMessage };
+            }
+          }
+          return {
+            header,
+            body: { text: card.body },
+            footer: card.footer ? { text: card.footer } : undefined,
+            nativeFlowMessage: { buttons: buildCardButtons(card) },
+          } as proto.Message.IInteractiveMessage;
+        }),
+      );
+
+      interactiveMessage = {
+        body: { text: data.body },
+        carouselMessage: { cards, messageVersion: 1 },
+      };
+    }
+
+    return await this.sendMessageWithTyping(
+      data.number,
+      { interactiveMessage },
+      {
+        delay: data?.delay,
+        presence: 'composing',
+        quoted: data?.quoted,
+        mentionsEveryOne: data?.mentionsEveryOne,
+        mentioned: data?.mentioned,
+      },
+      false,
+      [buildInteractiveBizNode()],
     );
   }
 
@@ -3754,10 +3900,14 @@ export class BaileysStartupService extends ChannelStartupService {
       users: { number: string; jid: string; name?: string }[];
     } = { groups: [], broadcast: [], users: [] };
 
+    const onWhatsapp: OnWhatsAppDto[] = [];
+
     data.numbers.forEach((number) => {
       const jid = createJid(number);
 
-      if (isJidGroup(jid)) {
+      if (isJidNewsletter(jid)) {
+        onWhatsapp.push(new OnWhatsAppDto(jid, true, number));
+      } else if (isJidGroup(jid)) {
         jids.groups.push({ number, jid });
       } else if (jid === 'status@broadcast') {
         jids.broadcast.push({ number, jid });
@@ -3765,8 +3915,6 @@ export class BaileysStartupService extends ChannelStartupService {
         jids.users.push({ number, jid });
       }
     });
-
-    const onWhatsapp: OnWhatsAppDto[] = [];
 
     // BROADCAST
     onWhatsapp.push(...jids.broadcast.map(({ jid, number }) => new OnWhatsAppDto(jid, false, number)));
@@ -4942,6 +5090,10 @@ export class BaileysStartupService extends ChannelStartupService {
       messageRaw.status = status[3]; // DELIVERED MESSAGE
     }
 
+    if (isJidNewsletter(message.key.remoteJid) && message.key.fromMe) {
+      messageRaw.status = status[3];
+    }
+
     if (messageRaw.message.extendedTextMessage) {
       messageRaw.messageType = 'conversation';
       messageRaw.message.conversation = messageRaw.message.extendedTextMessage.text;
@@ -5384,6 +5536,187 @@ export class BaileysStartupService extends ChannelStartupService {
         currentPage: query.page,
         records: formattedMessages,
       },
+    };
+  }
+
+  public async baileysDecryptPollVote(pollCreationMessageKey: proto.IMessageKey) {
+    const pollCreationMessage = (await this.getMessage(pollCreationMessageKey, true)) as proto.IWebMessageInfo;
+
+    if (!pollCreationMessage) {
+      throw new NotFoundException('Poll creation message not found');
+    }
+
+    const pollMessage = pollCreationMessage.message as any;
+    const pollOptions = pollMessage?.pollCreationMessage?.options || pollMessage?.pollCreationMessageV3?.options || [];
+
+    if (!pollOptions.length) {
+      throw new NotFoundException('Poll options not found');
+    }
+
+    const pollMessageSecret = (await this.getMessage(pollCreationMessageKey)) as any;
+    let pollEncKey = pollMessageSecret?.messageContextInfo?.messageSecret;
+
+    if (!pollEncKey) {
+      throw new NotFoundException('Poll encryption key not found');
+    }
+
+    if (typeof pollEncKey === 'string') {
+      pollEncKey = Buffer.from(pollEncKey, 'base64');
+    } else if (pollEncKey?.type === 'Buffer' && Array.isArray(pollEncKey.data)) {
+      pollEncKey = Buffer.from(pollEncKey.data);
+    }
+
+    if (Buffer.isBuffer(pollEncKey) && pollEncKey.length === 44) {
+      pollEncKey = Buffer.from(pollEncKey.toString('utf8'), 'base64');
+    }
+
+    const pollUpdateMessages = (
+      await this.prismaRepository.message.findMany({
+        where: {
+          instanceId: this.instanceId,
+          messageType: 'pollUpdateMessage',
+        },
+        select: {
+          key: true,
+          message: true,
+          messageTimestamp: true,
+        },
+      })
+    ).filter((storedMessage) => {
+      const creationKey = (storedMessage.message as any)?.pollUpdateMessage?.pollCreationMessageKey;
+      return (
+        creationKey?.id === pollCreationMessageKey.id &&
+        jidNormalizedUser(creationKey.remoteJid || '') === jidNormalizedUser(pollCreationMessageKey.remoteJid || '')
+      );
+    });
+
+    const creatorCandidates = [
+      this.instance.wuid,
+      this.client.user?.lid,
+      pollCreationMessage.key.participant,
+      (pollCreationMessage.key as ExtendedIMessageKey).participantAlt,
+      pollCreationMessage.key.remoteJid,
+      (pollCreationMessage.key as ExtendedIMessageKey).remoteJidAlt,
+    ].filter(Boolean) as string[];
+    const creators = [...new Set(creatorCandidates.map(jidNormalizedUser))];
+    const votesByUser = new Map<string, { timestamp: number; selectedOptions: string[]; voterJid: string }>();
+
+    const mapSelectedOptions = (selectedOptions: unknown[]): string[] =>
+      pollOptions
+        .filter((option: { optionName: string }) => {
+          const optionHash = createHash('sha256').update(option.optionName).digest();
+          return selectedOptions.some((selected) => {
+            const selectedBuffer = Buffer.isBuffer(selected)
+              ? selected
+              : (selected as { type?: string; data?: number[] })?.type === 'Buffer'
+                ? Buffer.from((selected as { data: number[] }).data)
+                : undefined;
+            return selectedBuffer ? Buffer.compare(selectedBuffer, optionHash) === 0 : false;
+          });
+        })
+        .map((option: { optionName: string }) => option.optionName);
+
+    for (const pollUpdateMessage of pollUpdateMessages) {
+      const pollVote = (pollUpdateMessage.message as any)?.pollUpdateMessage?.vote;
+      if (!pollVote) continue;
+
+      const key = pollUpdateMessage.key as ExtendedIMessageKey;
+      const voterCandidates = (
+        key.fromMe
+          ? [this.instance.wuid, this.client.user?.lid, key.participant, key.participantAlt]
+          : [key.participant, key.participantAlt, key.remoteJidAlt, key.remoteJid]
+      ).filter(Boolean) as string[];
+      const voters = [...new Set(voterCandidates.map(jidNormalizedUser))];
+
+      let selectedOptionNames: string[] = [];
+      let voterJid: string | undefined;
+
+      if (Array.isArray(pollVote.selectedOptions)) {
+        selectedOptionNames =
+          typeof pollVote.selectedOptions[0] === 'string'
+            ? pollVote.selectedOptions
+            : mapSelectedOptions(pollVote.selectedOptions);
+        voterJid = voters[0];
+      } else if (pollVote.encPayload) {
+        for (const creator of creators) {
+          for (const voter of voters) {
+            try {
+              const decryptedVote = decryptPollVote(pollVote, {
+                pollCreatorJid: creator,
+                pollMsgId: pollCreationMessage.key.id,
+                pollEncKey,
+                voterJid: voter,
+              });
+              selectedOptionNames = mapSelectedOptions(decryptedVote.selectedOptions || []);
+              voterJid = voter;
+              break;
+            } catch {
+              // LID and phone-number JIDs can both be present; try each valid pair.
+            }
+          }
+          if (voterJid) break;
+        }
+      }
+
+      if (!voterJid || !selectedOptionNames.length) continue;
+
+      const normalizedVoterJid = jidNormalizedUser(voterJid);
+      const existingVote = votesByUser.get(normalizedVoterJid);
+      if (!existingVote || pollUpdateMessage.messageTimestamp > existingVote.timestamp) {
+        votesByUser.set(normalizedVoterJid, {
+          timestamp: pollUpdateMessage.messageTimestamp,
+          selectedOptions: selectedOptionNames,
+          voterJid,
+        });
+      }
+    }
+
+    const results = Object.fromEntries(
+      pollOptions.map((option: { optionName: string }) => [option.optionName, { votes: 0, voters: [] as string[] }]),
+    );
+
+    votesByUser.forEach(({ selectedOptions, voterJid }) => {
+      selectedOptions.forEach((optionName) => {
+        if (!results[optionName]) return;
+        results[optionName].votes++;
+        if (!results[optionName].voters.includes(voterJid)) results[optionName].voters.push(voterJid);
+      });
+    });
+
+    return {
+      poll: {
+        name: pollMessage.pollCreationMessage?.name || pollMessage.pollCreationMessageV3?.name || 'Unnamed poll',
+        totalVotes: votesByUser.size,
+        results,
+      },
+    };
+  }
+
+  public async fetchChannels(query: Query<Contact>) {
+    const page = Math.max(Number(query?.page) || 1, 1);
+    const offset = Math.max(Number(query?.offset) || 50, 1);
+    const skip = (page - 1) * offset;
+    const messages = await this.prismaRepository.message.findMany({
+      where: { instanceId: this.instanceId },
+      orderBy: { messageTimestamp: 'desc' },
+      select: { key: true, messageTimestamp: true },
+    });
+    const channels = new Map<string, { remoteJid: string; lastMessageTimestamp: number }>();
+
+    for (const message of messages) {
+      const remoteJid = (message.key as ExtendedIMessageKey)?.remoteJid;
+      if (remoteJid && isJidNewsletter(remoteJid) && !channels.has(remoteJid)) {
+        channels.set(remoteJid, { remoteJid, lastMessageTimestamp: message.messageTimestamp });
+      }
+    }
+
+    const allChannels = [...channels.values()];
+    return {
+      total: allChannels.length,
+      pages: Math.ceil(allChannels.length / offset),
+      currentPage: page,
+      offset,
+      records: allChannels.slice(skip, skip + offset),
     };
   }
 }
