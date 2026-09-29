@@ -47,3 +47,4 @@ lerna-debug.log*
 .tool-versions
 
 /prisma/migrations/*
+!/test/whatsapp-business-identity.test.ts

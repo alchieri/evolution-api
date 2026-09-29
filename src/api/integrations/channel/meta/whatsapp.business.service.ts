@@ -22,7 +22,7 @@ import { ChannelStartupService } from '@api/services/channel.service';
 import { Events, wa } from '@api/types/wa.types';
 import { AudioConverter, Chatwoot, ConfigService, Database, Openai, S3, WaBusiness } from '@config/env.config';
 import { BadRequestException, InternalServerErrorException } from '@exceptions';
-import { createJid } from '@utils/createJid';
+import { businessRecipient, businessRemoteId, isBusinessScopedUserId } from '@utils/whatsappBusinessIdentity';
 import { status } from '@utils/renderStatus';
 import { sendTelemetry } from '@utils/sendTelemetry';
 import axios from 'axios';
@@ -80,6 +80,7 @@ export class BusinessStartupService extends ChannelStartupService {
       let urlServer = this.configService.get<WaBusiness>('WA_BUSINESS').URL;
       const version = this.configService.get<WaBusiness>('WA_BUSINESS').VERSION;
       urlServer = `${urlServer}/${version}/${this.number}/${params}`;
+      if (params === 'messages' && this.instance.businessId) message.messaging_account_id = this.instance.businessId;
       const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` };
       const result = await axios.post(urlServer, message, { headers });
       return result.data;
@@ -89,7 +90,7 @@ export class BusinessStartupService extends ChannelStartupService {
   }
 
   public async profilePicture(number: string) {
-    const jid = createJid(number);
+    const jid = businessRemoteId(number);
 
     return {
       wuid: jid,
@@ -126,7 +127,12 @@ export class BusinessStartupService extends ChannelStartupService {
   public async connectToWhatsapp(data?: any): Promise<any> {
     if (!data) return;
 
-    const content = data.entry[0].changes[0].value;
+    // Passive copies and handovers must never be interpreted as customer input for bots.
+    const change = data.entry?.[0]?.changes?.[0];
+    if (change?.field === 'standby' || change?.field === 'messaging_handovers') return;
+    if (this.instance.businessId && data.entry?.[0]?.id !== this.instance.businessId) return;
+    const content = change?.value;
+    if (!content) return;
     const normalizedContent = this.normalizeWebhookContent(content);
     const remoteId = this.resolveRemoteId(normalizedContent);
 
@@ -136,7 +142,7 @@ export class BusinessStartupService extends ChannelStartupService {
       await this.eventHandler(normalizedContent);
 
       if (remoteId) {
-        this.phoneNumber = createJid(remoteId);
+        this.phoneNumber = businessRemoteId(remoteId);
       }
     } catch (error) {
       this.logger.error(error);
@@ -160,13 +166,13 @@ export class BusinessStartupService extends ChannelStartupService {
   }
 
   private normalizePhoneNumber(value?: string) {
-    return typeof value === 'string' ? value.replace(/\D/g, '') : '';
+    return typeof value === 'string' && !isBusinessScopedUserId(value) ? value.replace(/\D/g, '') : '';
   }
 
   private resolveRemoteId(content: any) {
     const firstMessage = content?.messages?.[0];
-    const recipient = content?.statuses?.[0]?.recipient_id;
-    const candidates = [firstMessage?.from, firstMessage?.to, recipient].filter(Boolean) as string[];
+    const recipient = content?.statuses?.[0]?.recipient_user_id ?? content?.statuses?.[0]?.recipient_id;
+    const candidates = [firstMessage?.from_user_id, firstMessage?.from, firstMessage?.recipient, firstMessage?.to, recipient].filter(Boolean) as string[];
 
     if (candidates.length === 0) return undefined;
 
@@ -191,10 +197,10 @@ export class BusinessStartupService extends ChannelStartupService {
 
   private resolveMessageRemoteId(message: any, received: any) {
     if (this.isCloudApiEchoPayload(received)) {
-      return message?.to ?? message?.from;
+      return message?.recipient ?? message?.to ?? message?.from_user_id ?? message?.from;
     }
 
-    return message?.from ?? message?.to;
+    return message?.from_user_id ?? message?.from ?? message?.recipient ?? message?.to;
   }
 
   private isCloudApiFromMe(message: any, received: any) {
@@ -392,7 +398,7 @@ export class BusinessStartupService extends ChannelStartupService {
       }
 
       if (!contact.phones[0]?.wa_id) {
-        contact.phones[0].wa_id = createJid(contact.phones[0].phone);
+        contact.phones[0].wa_id = businessRemoteId(contact.phones[0].phone);
       }
 
       result +=
@@ -474,7 +480,7 @@ export class BusinessStartupService extends ChannelStartupService {
         const remoteId = this.resolveMessageRemoteId(message, received);
         if (!remoteId) return;
 
-        const remoteJid = createJid(remoteId);
+        const remoteJid = businessRemoteId(remoteId);
         const contact = await this.prismaRepository.contact.findFirst({
           where: { instanceId: this.instanceId, remoteJid },
         });
@@ -788,11 +794,11 @@ export class BusinessStartupService extends ChannelStartupService {
           });
         }
 
-        const contactPhone = incomingContact?.profile?.phone ?? incomingContact?.wa_id ?? remoteId;
+        const contactPhone = incomingContact?.user_id ?? incomingContact?.profile?.phone ?? incomingContact?.wa_id ?? remoteId;
         if (!contactPhone) return;
 
         const contactRaw: any = {
-          remoteJid: createJid(contactPhone),
+          remoteJid: businessRemoteId(contactPhone),
           pushName,
           // profilePicUrl: '',
           instanceId: this.instanceId,
@@ -804,7 +810,7 @@ export class BusinessStartupService extends ChannelStartupService {
 
         if (contact) {
           const contactRaw: any = {
-            remoteJid: createJid(contactPhone),
+            remoteJid: businessRemoteId(contactPhone),
             pushName,
             // profilePicUrl: '',
             instanceId: this.instanceId,
@@ -835,12 +841,12 @@ export class BusinessStartupService extends ChannelStartupService {
       }
       if (received.statuses) {
         for await (const item of received.statuses) {
-          const remoteId = item?.recipient_id;
+          const remoteId = item?.recipient_user_id ?? item?.recipient_id;
           if (!remoteId) continue;
 
           const key: any = {
             id: item.id,
-            remoteJid: createJid(remoteId),
+            remoteJid: businessRemoteId(remoteId),
             fromMe: this.isCloudApiStatusFromMe(item, received),
           };
           if (settings?.groups_ignore && key.remoteJid.includes('@g.us')) {
@@ -1063,7 +1069,7 @@ export class BusinessStartupService extends ChannelStartupService {
             messaging_product: 'whatsapp',
             recipient_type: 'individual',
             type: 'reaction',
-            to: number.replace(/\D/g, ''),
+            ...businessRecipient(number),
             reaction: {
               message_id: message['reactionMessage']['key']['id'],
               emoji: message['reactionMessage']['text'],
@@ -1077,7 +1083,7 @@ export class BusinessStartupService extends ChannelStartupService {
             messaging_product: 'whatsapp',
             recipient_type: 'individual',
             type: 'location',
-            to: number.replace(/\D/g, ''),
+            ...businessRecipient(number),
             location: {
               longitude: message['locationMessage']['degreesLongitude'],
               latitude: message['locationMessage']['degreesLatitude'],
@@ -1093,7 +1099,7 @@ export class BusinessStartupService extends ChannelStartupService {
             messaging_product: 'whatsapp',
             recipient_type: 'individual',
             type: 'contacts',
-            to: number.replace(/\D/g, ''),
+            ...businessRecipient(number),
             contacts: message['contacts'],
           };
           quoted ? (content.context = { message_id: quoted.id }) : content;
@@ -1105,7 +1111,7 @@ export class BusinessStartupService extends ChannelStartupService {
             messaging_product: 'whatsapp',
             recipient_type: 'individual',
             type: 'text',
-            to: number.replace(/\D/g, ''),
+            ...businessRecipient(number),
             text: {
               body: message['conversation'],
               preview_url: Boolean(options?.linkPreview),
@@ -1121,7 +1127,7 @@ export class BusinessStartupService extends ChannelStartupService {
             messaging_product: 'whatsapp',
             recipient_type: 'individual',
             type: message['mediaType'],
-            to: number.replace(/\D/g, ''),
+            ...businessRecipient(number),
             [message['mediaType']]: {
               [message['type']]: message['id'],
               ...(message['mediaType'] !== 'audio' &&
@@ -1139,7 +1145,7 @@ export class BusinessStartupService extends ChannelStartupService {
             messaging_product: 'whatsapp',
             recipient_type: 'individual',
             type: 'audio',
-            to: number.replace(/\D/g, ''),
+            ...businessRecipient(number),
             audio: {
               [message['type']]: message['id'],
             },
@@ -1151,7 +1157,7 @@ export class BusinessStartupService extends ChannelStartupService {
           content = {
             messaging_product: 'whatsapp',
             recipient_type: 'individual',
-            to: number.replace(/\D/g, ''),
+            ...businessRecipient(number),
             type: 'interactive',
             interactive: {
               type: 'button',
@@ -1175,7 +1181,7 @@ export class BusinessStartupService extends ChannelStartupService {
           content = {
             messaging_product: 'whatsapp',
             recipient_type: 'individual',
-            to: number.replace(/\D/g, ''),
+            ...businessRecipient(number),
             type: 'interactive',
             interactive: {
               type: 'list',
@@ -1210,7 +1216,7 @@ export class BusinessStartupService extends ChannelStartupService {
           content = {
             messaging_product: 'whatsapp',
             recipient_type: 'individual',
-            to: number.replace(/\D/g, ''),
+            ...businessRecipient(number),
             type: 'template',
             template: {
               name: message['template']['name'],
@@ -1232,7 +1238,7 @@ export class BusinessStartupService extends ChannelStartupService {
       }
 
       const messageRaw: any = {
-        key: { fromMe: true, id: messageSent?.messages[0]?.id, remoteJid: createJid(number) },
+        key: { fromMe: true, id: messageSent?.messages[0]?.id, remoteJid: businessRemoteId(number) },
         message: this.convertMessageToRaw(message, content),
         messageType: this.renderMessageType(content.type),
         messageTimestamp: (messageSent?.messages[0]?.timestamp as number) || Math.round(new Date().getTime() / 1000),
@@ -1652,7 +1658,7 @@ export class BusinessStartupService extends ChannelStartupService {
       }
 
       if (!contact.wuid) {
-        contact.wuid = createJid(contact.phoneNumber);
+        contact.wuid = businessRemoteId(contact.phoneNumber);
       }
 
       result += `item1.TEL;waid=${contact.wuid}:${contact.phoneNumber}\n` + 'item1.X-ABLabel:Celular\n' + 'END:VCARD';
