@@ -6,7 +6,7 @@ test('BSUID and parent BSUID stay opaque in outbound and inbound identities', ()
     assert.deepEqual(businessRecipient(id), { recipient: id });
     assert.equal(businessRemoteId(id), id);
   }
-  assert.deepEqual(businessRecipient('+55 (11) 99999-8888'), {to: '5511999998888'});
+  assert.deepEqual(businessRecipient('+55 (11) 99999-8888'), { to: '5511999998888' });
   assert.equal(businessRemoteId('5511999998888'), '5511999998888@s.whatsapp.net');
   assert.throws(() => businessRecipient('broken.Id123'));
 });

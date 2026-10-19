@@ -22,9 +22,9 @@ import { ChannelStartupService } from '@api/services/channel.service';
 import { Events, wa } from '@api/types/wa.types';
 import { AudioConverter, Chatwoot, ConfigService, Database, Openai, S3, WaBusiness } from '@config/env.config';
 import { BadRequestException, InternalServerErrorException } from '@exceptions';
-import { businessRecipient, businessRemoteId, isBusinessScopedUserId } from '@utils/whatsappBusinessIdentity';
 import { status } from '@utils/renderStatus';
 import { sendTelemetry } from '@utils/sendTelemetry';
+import { businessRecipient, businessRemoteId, isBusinessScopedUserId } from '@utils/whatsappBusinessIdentity';
 import axios from 'axios';
 import { arrayUnique, isURL } from 'class-validator';
 import EventEmitter2 from 'eventemitter2';
@@ -172,7 +172,13 @@ export class BusinessStartupService extends ChannelStartupService {
   private resolveRemoteId(content: any) {
     const firstMessage = content?.messages?.[0];
     const recipient = content?.statuses?.[0]?.recipient_user_id ?? content?.statuses?.[0]?.recipient_id;
-    const candidates = [firstMessage?.from_user_id, firstMessage?.from, firstMessage?.recipient, firstMessage?.to, recipient].filter(Boolean) as string[];
+    const candidates = [
+      firstMessage?.from_user_id,
+      firstMessage?.from,
+      firstMessage?.recipient,
+      firstMessage?.to,
+      recipient,
+    ].filter(Boolean) as string[];
 
     if (candidates.length === 0) return undefined;
 
@@ -794,7 +800,8 @@ export class BusinessStartupService extends ChannelStartupService {
           });
         }
 
-        const contactPhone = incomingContact?.user_id ?? incomingContact?.profile?.phone ?? incomingContact?.wa_id ?? remoteId;
+        const contactPhone =
+          incomingContact?.user_id ?? incomingContact?.profile?.phone ?? incomingContact?.wa_id ?? remoteId;
         if (!contactPhone) return;
 
         const contactRaw: any = {

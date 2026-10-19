@@ -1,0 +1,21 @@
+// Keep unit tests independent of the developer's .env and external services.
+Object.assign(process.env, {
+  NODE_ENV: 'test',
+  DATABASE_PROVIDER: 'postgresql',
+  DATABASE_CONNECTION_URI: 'postgresql://test:test@127.0.0.1:1/test',
+  CACHE_REDIS_ENABLED: 'false',
+  CACHE_LOCAL_ENABLED: 'true',
+  CHATWOOT_ENABLED: 'false',
+  OPENAI_ENABLED: 'false',
+  TYPEBOT_ENABLED: 'false',
+  DIFY_ENABLED: 'false',
+  S3_ENABLED: 'false',
+  PROVIDER_ENABLED: 'false',
+  RABBITMQ_ENABLED: 'false',
+  NATS_ENABLED: 'false',
+  SQS_ENABLED: 'false',
+  KAFKA_ENABLED: 'false',
+  WEBSOCKET_ENABLED: 'false',
+  PUSHER_ENABLED: 'false',
+  TELEMETRY_ENABLED: 'false',
+});

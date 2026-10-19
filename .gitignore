@@ -35,6 +35,7 @@ lerna-debug.log*
 /instances/*
 !/instances/.gitkeep
 /test/*
+!/test/setup.ts
 !/test/upstream-backports.test.ts
 /src/env.yml
 /store
