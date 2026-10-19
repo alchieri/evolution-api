@@ -47,5 +47,9 @@ lerna-debug.log*
 *.DS_Store
 .tool-versions
 
+# Python deployment tooling
+__pycache__/
+*.py[cod]
+
 /prisma/migrations/*
 !/test/whatsapp-business-identity.test.ts

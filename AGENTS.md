@@ -35,6 +35,12 @@ This document provides comprehensive guidelines for AI agents (Claude, GPT, Curs
 - **`dist/`** – Build output (do not edit directly)
 - **`public/`** – Static assets and media files
 - **`Docker*`**, **`docker-compose*.yaml`** – Containerization and local development stack
+- **AWS production**: use `deploy/aws/deploy_ecs.py` and follow `deploy/aws/README-ecs-fargate.md`.
+  Keep one session owner and disable service autoscaling and Availability Zone rebalancing.
+  Wait for every previous task to reach `STOPPED`, change the revision at zero replicas,
+  wait for a single stable deployment at zero, then scale to one in a separate API call.
+  Rollbacks must use the same sequence; do not enable automatic ECS rollback or combine
+  a task definition update with scale-up.
 
 ## Build, Test, and Development Commands
 

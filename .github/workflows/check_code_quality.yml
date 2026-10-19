@@ -16,6 +16,9 @@ jobs:
       with:
         submodules: recursive
 
+    - name: Test single-replica ECS deployment
+      run: python3 -m unittest discover -s deploy/aws -p 'test_*.py'
+
     - name: Install Node
       uses: actions/setup-node@v5
       with:
