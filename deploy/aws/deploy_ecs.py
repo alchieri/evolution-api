@@ -115,7 +115,8 @@ class Deployment:
 
     def configure(self, service):
         current = service.get("deploymentConfiguration", {})
-        grace = max(service.get("healthCheckGracePeriodSeconds", 0), 120)
+        # The ALB requires five 30-second successes. Allow startup plus that full window.
+        grace = max(service.get("healthCheckGracePeriodSeconds", 0), 300)
         if (any(current.get(key) != value for key, value in POLICY.items())
                 or service.get("availabilityZoneRebalancing") != "DISABLED"
                 or service.get("healthCheckGracePeriodSeconds", 0) != grace):
@@ -145,13 +146,36 @@ class Deployment:
         if any(d.get("rolloutState") == "FAILED" for d in service["deployments"]):
             raise RuntimeError("The new deployment failed its ECS health checks")
         tasks = self.live_tasks()
-        return (
+        ecs_ready = (
             (service["desiredCount"], service["runningCount"], service["pendingCount"]) == (1, 1, 0)
             and len(service["deployments"]) == 1
             and service["deployments"][0].get("rolloutState") == "COMPLETED"
             and len(tasks) == 1 and tasks[0]["lastStatus"] == "RUNNING"
             and tasks[0]["taskDefinitionArn"] == revision
         )
+        if not ecs_ready:
+            return False
+        addresses = {
+            detail["value"]
+            for task in tasks
+            for attachment in task.get("attachments", [])
+            for detail in attachment.get("details", [])
+            if detail.get("name") == "privateIPv4Address"
+        }
+        for load_balancer in service.get("loadBalancers", []):
+            health = self.aws(
+                "elbv2", "describe-target-health",
+                "--target-group-arn", load_balancer["targetGroupArn"],
+            )
+            expected_port = load_balancer.get("containerPort")
+            if not any(
+                item.get("Target", {}).get("Id") in addresses
+                and (expected_port is None or item.get("Target", {}).get("Port") == expected_port)
+                and item.get("TargetHealth", {}).get("State") == "healthy"
+                for item in health.get("TargetHealthDescriptions", [])
+            ):
+                return False
+        return True
 
     def replace(self, revision):
         previous = self.service()["taskDefinition"]
@@ -168,17 +192,30 @@ class Deployment:
         self.update(desired_count=1)
         self.wait(lambda: self.ready(revision), "Waiting for exactly one healthy task on the selected revision")
 
-    def register(self, image, revision):
+    def register(self, image, revision, cpu=None, memory=None):
         task = self.aws("ecs", "describe-task-definition", "--task-definition", revision)["taskDefinition"]
         allowed = self.aws("ecs", "register-task-definition", "--generate-cli-skeleton", "input")
         definition = copy.deepcopy({key: value for key, value in task.items() if key in allowed})
         matches = [c for c in definition["containerDefinitions"] if c["name"] == self.container]
         if len(matches) != 1:
             raise RuntimeError("The selected container was not found in the current task definition")
-        if matches[0]["image"] == image:
+        changed = False
+        if image is not None and matches[0]["image"] != image:
+            matches[0]["image"] = image
+            matches[0].get("dockerLabels", {}).pop("org.opencontainers.image.revision", None)
+            changed = True
+        if cpu is not None:
+            size_changed = (
+                task.get("cpu") != str(cpu) or task.get("memory") != str(memory)
+                or matches[0].get("cpu") != int(cpu) or matches[0].get("memory") != int(memory)
+            )
+            definition["cpu"] = str(cpu)
+            definition["memory"] = str(memory)
+            matches[0]["cpu"] = int(cpu)
+            matches[0]["memory"] = int(memory)
+            changed |= size_changed
+        if not changed:
             return revision
-        matches[0]["image"] = image
-        matches[0].get("dockerLabels", {}).pop("org.opencontainers.image.revision", None)
         # Keep environment values and secret references out of command arguments and logs.
         with tempfile.TemporaryDirectory(prefix="evolution-task-") as directory:
             path = Path(directory) / "task.json"
@@ -188,7 +225,7 @@ class Deployment:
                 "ecs", "register-task-definition", "--cli-input-json", "file://" + str(path),
             )["taskDefinition"]["taskDefinitionArn"]
 
-    def deploy(self, image=None, force=False):
+    def deploy(self, image=None, force=False, cpu=None, memory=None):
         service = self.preflight()
         previous = service["taskDefinition"]
         selected = previous
@@ -202,9 +239,10 @@ class Deployment:
             )
             if images.get("failures") or len(images.get("images", [])) != 1:
                 raise RuntimeError("The requested image does not exist in ECR")
-            selected = self.register(image, previous)
+        if image is not None or cpu is not None:
+            selected = self.register(image, previous, cpu, memory)
         self.configure(service)
-        if image is None or (selected == previous and not force):
+        if selected == previous and not force:
             log("No task replacement is needed")
             return
         try:
@@ -223,13 +261,24 @@ def main():
     parser.add_argument("--service", required=True)
     parser.add_argument("--container", required=True)
     parser.add_argument("--timeout", type=int, default=900, help="Timeout in seconds for each deployment phase")
-    mode = parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--image", help="Immutable ECR repository@sha256 image")
-    mode.add_argument("--configure-only", action="store_true", help="Apply guardrails without replacing tasks")
+    parser.add_argument("--image", help="Immutable ECR repository@sha256 image")
+    parser.add_argument("--configure-only", action="store_true", help="Apply guardrails without replacing tasks")
+    parser.add_argument("--cpu", type=int, help="Task and application container CPU units")
+    parser.add_argument("--memory", type=int, help="Task and application container memory in MiB")
     parser.add_argument("--force", action="store_true", help="Replace tasks even if the image has not changed")
     args = parser.parse_args()
-    if args.timeout <= 0 or (args.force and args.configure_only):
-        parser.error("Use a positive timeout; --force requires --image")
+    if args.timeout <= 0:
+        parser.error("Use a positive timeout")
+    if (args.cpu is None) != (args.memory is None):
+        parser.error("Use --cpu and --memory together")
+    if args.cpu is not None and (args.cpu <= 0 or args.memory <= 0):
+        parser.error("Use positive --cpu and --memory values")
+    if args.configure_only and any((args.image, args.force, args.cpu, args.memory)):
+        parser.error("--configure-only cannot be combined with a replacement")
+    if args.force and args.image is None:
+        parser.error("--force requires --image")
+    if not args.configure_only and args.image is None and args.cpu is None:
+        parser.error("Use --image, --cpu with --memory, or --configure-only")
     os.umask(0o077)
     import fcntl
     key = hashlib.sha256(f"{args.region}/{args.cluster}/{args.service}".encode()).hexdigest()[:24]
@@ -238,7 +287,9 @@ def main():
         def interrupted(_signum, _frame):
             raise InterruptedError("Deployment interrupted")
         signal.signal(signal.SIGTERM, interrupted)
-        Deployment(AwsCli(args.region), args.cluster, args.service, args.container, args.timeout).deploy(args.image, args.force)
+        Deployment(AwsCli(args.region), args.cluster, args.service, args.container, args.timeout).deploy(
+            args.image, args.force, args.cpu, args.memory,
+        )
 
 
 if __name__ == "__main__":

@@ -78,11 +78,19 @@ O script verifica a imagem no ECR, preserva a configuração da task atual e exe
 
 1. Reduz a escala para zero e espera todas as tasks chegarem a `STOPPED`, inclusive as que estão em `DEACTIVATING` com estado desejado `STOPPED`.
 2. Altera apenas a revisão e aguarda o serviço estabilizar nessa revisão com zero tasks e um único deployment.
-3. Aumenta apenas a escala para uma réplica e verifica a revisão e a estabilidade da task resultante.
+3. Aumenta apenas a escala para uma réplica e verifica a revisão, a estabilidade da task e a saúde real do target no ALB.
 
 Não combine `--task-definition` e `--desired-count 1` na mesma chamada de `UpdateService`: o ECS pode recriar uma task da revisão antiga enquanto inicia a revisão nova. O rollback do script segue as mesmas três fases. O rollback automático do ECS fica desativado para que não contorne essa sequência; o circuit breaker continua detectando falhas.
 
 O deploy exige uma janela de reconexão, que inclui a drenagem do ALB. O timeout padrão é de 900 segundos por fase. A mesma imagem já ativa não reinicia tasks; use `--force` somente para solicitar essa substituição.
+
+Para alterar CPU e memória da task e do container sem trocar a imagem, informe os dois valores. O ECS valida se a combinação é suportada pelo Fargate:
+
+```bash
+python3 deploy/aws/deploy_ecs.py \
+  --region us-east-1 --cluster evolution-api --service evolution-api-service \
+  --container evolution-api-container --cpu 256 --memory 512
+```
 
 Para aplicar somente os limites, sem interromper a task atual:
 
@@ -92,11 +100,11 @@ python3 deploy/aws/deploy_ecs.py \
   --container evolution-api-container --configure-only
 ```
 
-O template e o script usam `minimumHealthyPercent=0`, `maximumPercent=100` e desativam o rebalanceamento entre zonas. O script recusa serviços com autoscaling registrado ou outro deployment em andamento. O template não cria autoscaling e aceita somente zero ou uma réplica.
+O template e o script usam `minimumHealthyPercent=0`, `maximumPercent=100`, grace period mínima de 300 segundos e desativam o rebalanceamento entre zonas. O script recusa serviços com autoscaling registrado ou outro deployment em andamento. O template não cria autoscaling e aceita somente zero ou uma réplica.
 
 Execute uma implantação por vez. O script mantém um lock local por serviço; em CI, serialize os jobs em um único grupo de concorrência e use `cancel-in-progress: false`. Para atualizar a imagem via CloudFormation, faça a mesma sequência em atualizações separadas: `DesiredCount=0` e tasks encerradas, imagem nova ainda com `DesiredCount=0`, depois `DesiredCount=1`.
 
-Permissões operacionais: `ecs:DescribeServices`, `ecs:ListTasks`, `ecs:DescribeTasks`, `ecs:DescribeTaskDefinition`, `ecs:RegisterTaskDefinition`, `ecs:UpdateService`, `iam:PassRole` restrito às roles da task, `ecr:BatchGetImage` e `application-autoscaling:DescribeScalableTargets`.
+Permissões operacionais: `ecs:DescribeServices`, `ecs:ListTasks`, `ecs:DescribeTasks`, `ecs:DescribeTaskDefinition`, `ecs:RegisterTaskDefinition`, `ecs:UpdateService`, `iam:PassRole` restrito às roles da task, `ecr:BatchGetImage`, `elasticloadbalancing:DescribeTargetHealth` e `application-autoscaling:DescribeScalableTargets`.
 
 Valide a regressão da sequência antes de alterar o script:
 

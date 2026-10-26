@@ -33,10 +33,16 @@ class FakeEcs:
         self.scalers = []
         self.image_exists = True
         self.registered = None
+        self.load_balancer = False
+        self.target_health_checks = 0
 
     @staticmethod
     def task(name, revision):
-        return {"taskArn": name, "taskDefinitionArn": revision, "lastStatus": "RUNNING", "desiredStatus": "RUNNING", "ticks": 2}
+        return {
+            "taskArn": name, "taskDefinitionArn": revision,
+            "lastStatus": "RUNNING", "desiredStatus": "RUNNING", "ticks": 2,
+            "attachments": [{"details": [{"name": "privateIPv4Address", "value": "10.0.0.10"}]}],
+        }
 
     def __call__(self, *args):
         self.calls.append(args)
@@ -45,6 +51,13 @@ class FakeEcs:
             return {"ScalableTargets": self.scalers}
         if operation == "batch-get-image":
             return {"images": [{}] if self.image_exists else []}
+        if operation == "describe-target-health":
+            self.target_health_checks += 1
+            state = "healthy" if self.target_health_checks >= 2 else "initial"
+            return {"TargetHealthDescriptions": [{
+                "Target": {"Id": "10.0.0.10", "Port": 8080},
+                "TargetHealth": {"State": state},
+            }]}
         if operation == "describe-services":
             if self.desired == 0:
                 self.zero_observed = True
@@ -55,13 +68,16 @@ class FakeEcs:
             deployments = [{"rolloutState": state}]
             if state == "FAILED":
                 deployments.append({"rolloutState": "COMPLETED"})
-            return {"services": [{
+            service = {
                 "status": "ACTIVE", "deploymentController": {"type": "ECS"},
                 "taskDefinition": self.revision, "desiredCount": self.desired,
                 "runningCount": running, "pendingCount": 0,
                 "deployments": deployments, "deploymentConfiguration": copy.deepcopy(self.policy),
                 "availabilityZoneRebalancing": self.az, "healthCheckGracePeriodSeconds": self.grace,
-            }]}
+            }
+            if self.load_balancer:
+                service["loadBalancers"] = [{"targetGroupArn": "target-group", "containerPort": 8080}]
+            return {"services": [service]}
         if operation == "list-tasks":
             status = args[args.index("--desired-status") + 1]
             return {"taskArns": [t["taskArn"] for t in self.tasks if t["desiredStatus"] == status]}
@@ -76,17 +92,18 @@ class FakeEcs:
             return {"tasks": result}
         if operation == "describe-task-definition":
             return {"taskDefinition": {
-                "family": "evolution", "taskDefinitionArn": OLD, "cpu": "512",
+                "family": "evolution", "taskDefinitionArn": OLD, "cpu": "512", "memory": "1024",
                 "executionRoleArn": "execution-role", "networkMode": "awsvpc",
                 "containerDefinitions": [{
                     "name": "evolution-api-container", "image": OLD_IMAGE,
+                    "cpu": 512, "memory": 1024,
                     "environmentFiles": [{"value": "arn:aws:s3:::bucket/evolution.env", "type": "s3"}],
                     "dockerLabels": {"org.opencontainers.image.revision": "old-revision"},
                 }],
             }}
         if operation == "register-task-definition":
             if "--generate-cli-skeleton" in args:
-                return dict.fromkeys(["family", "cpu", "executionRoleArn", "networkMode", "containerDefinitions"])
+                return dict.fromkeys(["family", "cpu", "memory", "executionRoleArn", "networkMode", "containerDefinitions"])
             path = Path(args[args.index("--cli-input-json") + 1].removeprefix("file://"))
             assert path.stat().st_mode & 0o777 == 0o600
             self.registered = json.loads(path.read_text())
@@ -146,7 +163,7 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual(self.aws.desired, 1)
         self.assertEqual(self.aws.policy, POLICY)
         self.assertEqual(self.aws.az, "DISABLED")
-        self.assertEqual(self.aws.grace, 120)
+        self.assertEqual(self.aws.grace, 300)
 
     def test_rollback_also_stops_failed_revision_before_starting_old_revision(self):
         self.aws.failed_revision = NEW
@@ -200,6 +217,23 @@ class DeploymentTests(unittest.TestCase):
         self.assertEqual(container["image"], NEW_IMAGE)
         self.assertEqual(container["environmentFiles"][0]["value"], "arn:aws:s3:::bucket/evolution.env")
         self.assertNotIn("org.opencontainers.image.revision", container["dockerLabels"])
+
+    def test_resize_updates_task_and_container_without_changing_image_or_environment(self):
+        self.deployer.deploy(cpu=256, memory=512)
+        definition = self.aws.registered
+        self.assertEqual(("256", "512"), (definition["cpu"], definition["memory"]))
+        container = definition["containerDefinitions"][0]
+        self.assertEqual((256, 512), (container["cpu"], container["memory"]))
+        self.assertEqual(OLD_IMAGE, container["image"])
+        self.assertEqual("arn:aws:s3:::bucket/evolution.env", container["environmentFiles"][0]["value"])
+        self.assertEqual(self.aws.events, [
+            ("stopped", OLD), ("revision-at-zero", NEW), ("started", NEW),
+        ])
+
+    def test_deploy_waits_for_load_balancer_target_health(self):
+        self.aws.load_balancer = True
+        self.deployer.deploy(cpu=256, memory=512)
+        self.assertGreaterEqual(self.aws.target_health_checks, 2)
 
     def test_forced_same_image_restart_still_waits_for_zero_replicas(self):
         self.deployer.deploy(OLD_IMAGE, force=True)

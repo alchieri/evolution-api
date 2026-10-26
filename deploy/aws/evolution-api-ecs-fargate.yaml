@@ -37,11 +37,11 @@ Parameters:
     Description: One WhatsApp session owner, or zero during a controlled deployment.
   Cpu:
     Type: Number
-    Default: 1024
+    Default: 256
     AllowedValues: [256, 512, 1024, 2048, 4096]
   Memory:
     Type: Number
-    Default: 2048
+    Default: 512
   DatabaseConnectionUriSecretArn:
     Type: String
     Description: Secrets Manager/SSM ARN that stores DATABASE_CONNECTION_URI (with sslmode=require).
@@ -230,7 +230,7 @@ Resources:
       LaunchType: FARGATE
       DesiredCount: !Ref DesiredCount
       TaskDefinition: !Ref TaskDefinition
-      HealthCheckGracePeriodSeconds: 120
+      HealthCheckGracePeriodSeconds: 300
       AvailabilityZoneRebalancing: DISABLED
       DeploymentConfiguration:
         MinimumHealthyPercent: 0
