@@ -53,3 +53,4 @@ __pycache__/
 
 /prisma/migrations/*
 !/test/whatsapp-business-identity.test.ts
+!/test/call-events.test.ts

@@ -1,5 +1,4 @@
 import { getCollectionsDto } from '@api/dto/business.dto';
-import { OfferCallDto } from '@api/dto/call.dto';
 import {
   ArchiveChatDto,
   BlockUserDto,
@@ -84,6 +83,7 @@ import ffmpegPath from '@ffmpeg-installer/ffmpeg';
 import { Boom } from '@hapi/boom';
 import { createId as cuid } from '@paralleldrive/cuid2';
 import { Instance, Message } from '@prisma/client';
+import { dispatchCallEvents, unsupportedCall } from '@utils/call-events';
 import { createJid } from '@utils/createJid';
 import { fetchLatestWaWebVersion } from '@utils/fetchLatestWaWebVersion';
 import { makeProxyAgent, makeProxyAgentUndici } from '@utils/makeProxyAgent';
@@ -2153,22 +2153,21 @@ export class BaileysStartupService extends ChannelStartupService {
             const settings = await this.findSettings();
 
             if (events.call) {
-              const call = events.call[0];
-
-              if (settings?.rejectCall && call.status == 'offer') {
-                this.client.rejectCall(call.id, call.from);
-              }
-
-              if (settings?.msgCall?.trim().length > 0 && call.status == 'offer') {
-                if (call.from.endsWith('@lid')) {
-                  call.from = await this.client.signalRepository.lidMapping.getPNForLID(call.from as string);
-                }
-                const msg = await this.client.sendMessage(call.from, { text: settings.msgCall });
-
-                this.client.ev.emit('messages.upsert', { messages: [msg], type: 'notify' });
-              }
-
-              this.sendDataWebhook(Events.CALL, call);
+              await dispatchCallEvents(events.call, {
+                reject: settings?.rejectCall ? (call) => this.client.rejectCall(call.id, call.from) : undefined,
+                reply:
+                  settings?.msgCall?.trim().length > 0
+                    ? async (call) => {
+                        const recipient = call.from.endsWith('@lid')
+                          ? await this.client.signalRepository.lidMapping.getPNForLID(call.from)
+                          : call.from;
+                        if (!recipient) return;
+                        const msg = await this.client.sendMessage(recipient, { text: settings.msgCall });
+                        this.client.ev.emit('messages.upsert', { messages: [msg], type: 'notify' });
+                      }
+                    : undefined,
+                publish: (call) => this.sendDataWebhook(Events.CALL, call),
+              }).catch(() => this.logger.error('Call event handling failed'));
             }
 
             if (events['connection.update']) {
@@ -2401,18 +2400,8 @@ export class BaileysStartupService extends ChannelStartupService {
     }
   }
 
-  public async offerCall({ number, isVideo, callDuration }: OfferCallDto) {
-    const jid = createJid(number);
-
-    try {
-      // const call = await this.client.offerCall(jid, isVideo);
-      // setTimeout(() => this.client.terminateCall(call.id, call.to), callDuration * 1000);
-
-      // return call;
-      return { id: '123', jid, isVideo, callDuration };
-    } catch (error) {
-      return error;
-    }
+  public async offerCall() {
+    return unsupportedCall();
   }
 
   private async sendMessage(
